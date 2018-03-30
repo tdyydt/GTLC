@@ -17,7 +17,8 @@ let rec string_of_ty = function
      str1 ^ " -> " ^ str2
   | TyDyn -> "?"
 
-type binOp = Plus | Mult | Lt (* | LAnd | LOr *)
+(* TODO: Eq は？？ *)
+type binOp = Plus | Minus | Mult | Div | Lt | Gt (* | LAnd | LOr *)
 
 (* Gradual: exp *)
 (* Gradually typed surface language *)
@@ -30,7 +31,8 @@ type exp =
   (* | If  *)
   | LetExp of id * exp * exp
   (* 型注釈が必要 *)
-  (* FunExp (x,t,e) => fun (x:t) -> e *)
+  (* fun (x:t) -> e
+   * => FunExp (x,t,e) *)
   | FunExp of id * ty * exp
   | AppExp of exp * exp
   (* | LetRecExp *)

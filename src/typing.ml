@@ -25,8 +25,8 @@ let matching_fun = function
 (* type of binOp *)
 (* binOp -> ty *)
 let ty_binop = function
-  | (Plus | Mult) -> (TyInt, TyInt, TyInt)
-  | Lt -> (TyInt, TyInt, TyBool)
+  | (Plus | Minus | Mult | Div) -> (TyInt, TyInt, TyInt)
+  | (Lt | Gt) -> (TyInt, TyInt, TyBool)
 
 (* exp -> ty Environment.t -> ty *)
 let rec ty_exp gamma = function
