@@ -1,0 +1,10 @@
+# OCaml
+# automatically generated files
+gtlc
+*.cm[iox]
+.depend
+lexer.ml
+parser.ml
+parser.mli
+parser.output
+parser.automaton
