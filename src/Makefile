@@ -1,6 +1,8 @@
 OCAMLC=ocamlc
 
-OBJS=syntax.cmo typing.cmo environment.cmo
+# The order of files matters
+# 順番を依存関係の順番にする必要がある？
+OBJS=environment.cmo syntax.cmo typing.cmo
 
 PROGNAME=gtlc
 
