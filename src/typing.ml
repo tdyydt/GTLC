@@ -22,6 +22,12 @@ let matching_fun = function
   | TyDyn -> (TyDyn, TyDyn)
   | _ -> todo () (* matching_error *)
 
+(* type of binOp *)
+(* binOp -> ty *)
+let ty_binop = function
+  | (Plus | Mult) -> (TyInt, TyInt, TyInt)
+  | Lt -> (TyInt, TyInt, TyBool)
+
 (* exp -> ty Environment.t -> ty *)
 let rec ty_exp gamma = function
   | Var x ->
@@ -32,7 +38,13 @@ let rec ty_exp gamma = function
   | ILit _ -> TyInt
   | BLit _ -> TyBool
   | BinOp (op, e1, e2) ->
-     todo ()                    (* ty_prim *)
+     let t1 = ty_exp gamma e1 in
+     let t2 = ty_exp gamma e2 in
+     let (u1, u2, u3) = ty_binop op in
+     if are_consistent t1 u1 then
+       if are_consistent t2 u2 then u3
+       else err (string_of_ty t2 ^ " and " ^ string_of_ty u2 ^ "are not consistent")
+     else err (string_of_ty t1 ^ " and " ^ string_of_ty u1 ^ "are not consistent")
   | LetExp (x, e1, e2) ->
      let t1 = ty_exp gamma e1 in
      ty_exp (Environment.add x t1 gamma) e2
