@@ -1,6 +1,6 @@
 OCAMLC=ocamlc
 
-OBJS=syntax.cmo typing.cmo
+OBJS=syntax.cmo typing.cmo environment.cmo
 
 PROGNAME=gtlc
 
