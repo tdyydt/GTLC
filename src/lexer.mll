@@ -12,8 +12,8 @@ let reservedWords = [
   ("in", P.IN);
   ("and", P.AND);
   ("rec", P.REC);
-  ("match", P.MATCH);           (* match *)
-  ("with", P.WITH);
+  (* ("match", P.MATCH);           (\* match *\)
+   * ("with", P.WITH); *)
   ("int", P.INT);               (* Types *)
   ("bool", P.BOOL);
 ]
@@ -61,4 +61,4 @@ and comment level = parse
   }
 | "(*" { comment (level + 1) lexbuf }
 | _ { comment level lexbuf }    (* ignore any char *)
-| eof { err "Comment is not closed." }
+| eof { failwith "Comment is not closed." }
