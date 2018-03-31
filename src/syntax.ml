@@ -28,7 +28,7 @@ type exp =
   | ILit of int
   | BLit of bool
   | BinOp of binOp * exp * exp
-  (* | If  *)
+  | IfExp of exp * exp * exp
   | LetExp of id * exp * exp
   (* 型注釈が必要 *)
   (* fun (x:t) -> e
