@@ -8,7 +8,7 @@ open Syntax
 %token PLUS MINUS MULT DIV
 %token LT GT
 %token IF THEN ELSE TRUE FALSE
-%token LET IN EQ AND REC
+%token LET IN EQ (* AND REC *)
 %token RARROW FUN
 %token INT BOOL QU              (* Types *)
 %token COLON
@@ -17,15 +17,11 @@ open Syntax
 %token <Syntax.id> ID
 
 (* precedence: lower to higher *)
-                   (* fun とか自信がない，確かに RARROW でも良さげ
-                    * 構文規則の優先順位の決め方について？？？？？？？？？
-                    * letも右でいいのか？*)
 %right prec_let prec_fun
 %right prec_if
 %left LT GT (* EQ, いまEQは，2項演算ではない *)
 %left PLUS MINUS
 %left MULT DIV
-(* %left prec_app *)
 
 %start toplevel
 %type <Syntax.exp> toplevel     (* program に変更？ *)
@@ -46,21 +42,17 @@ expr :
     { IfExp (e1, e2, e3) }
   | LET x=ID EQ e1=expr IN e2=expr %prec prec_let
     { LetExp (x, e1, e2) }
-  (* この規則の優先順位は，default では一番右の RARROW の優先順位と同じ
-   * だが，RARROW が fun ty にも現れることを考えると *)
+  (* この規則の優先順位は，default では一番右の RARROW の優先順位と同じだが，
+   * RARROW が fun ty にも現れることを考えると prec_fun の導入も妥当？ *)
   (* TODO: Is the parenthesis needed?? in (x:t) *)
   | FUN LPAREN x=ID COLON t=ty RPAREN RARROW e=expr %prec prec_fun
     { FunExp (x, t, e) }
-  (* application: left associative *)
-  (* prec_app を付けておかないと，conflict が生じる
-   * => 付けるだけでは治らなかった．．*)
-  (* | e1=expr e2=simple_expr %prec prec_app
-   *   { AppExp (e1, e2) } *)
   | e=app_expr { e }
-  (* | e1=expr e2=expr %prec prec_app { AppExp (e1, e2) }
-   * | e=simple_expr { e } *)
 
+(* prec_app を使って conflicts を解消しようとしたが，上手くいかない？？
+ * app に関してのみ，優先度に応じた nonterminal を追加する方針を利用 *)
 app_expr :
+  (* application: Left associative *)
   | e1=app_expr e2=simple_expr { AppExp (e1, e2) }
   | e=simple_expr { e }
 
