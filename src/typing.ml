@@ -3,7 +3,7 @@ open Syntax
 (* Error *)
 exception Error of string
 let err s = raise (Error s)
-let todo () = err "Not implemented yet." (* TODO: remove *)
+let todo s = err ("Not implemented yet: " ^ s) (* TODO: remove *)
 
 (* is_consistent としたいところだが，
  * are_consistent の方が正しくないか？？ *)
@@ -20,7 +20,7 @@ let rec are_consistent t1 t2 = match (t1,t2) with
 let matching_fun = function
   | TyFun (t1, t2) -> (t1, t2)
   | TyDyn -> (TyDyn, TyDyn)
-  | _ -> todo () (* matching_error *)
+  | _ -> err "matching error"
 
 (* type of binOp *)
 (* binOp -> ty *)
@@ -45,6 +45,7 @@ let rec ty_exp gamma = function
        if are_consistent t2 u2 then u3
        else err (string_of_ty t2 ^ " and " ^ string_of_ty u2 ^ "are not consistent")
      else err (string_of_ty t1 ^ " and " ^ string_of_ty u1 ^ " are not consistent")
+  | IfExp (e1, e2, e3) -> todo "typing if"
   | LetExp (x, e1, e2) ->
      let t1 = ty_exp gamma e1 in
      ty_exp (Environment.add x t1 gamma) e2
