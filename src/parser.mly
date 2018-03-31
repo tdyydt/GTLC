@@ -46,7 +46,8 @@ expr :
   (* | IF *)
   | LET x=ID EQ e1=expr IN e2=expr %prec prec_let
     { LetExp (x, e1, e2) }
-  | FUN x=ID COLON t=ty RARROW e=expr %prec prec_fun
+  (* (x:t) Is the parenthesis needed?? *)
+  | FUN LPAREN x=ID COLON t=ty RPAREN RARROW e=expr %prec prec_fun
     { FunExp (x, t, e) }
   | e1=simple_expr e2=simple_expr (* %prec prec_app *)
     { AppExp (e1, e2) }           (* application *)
