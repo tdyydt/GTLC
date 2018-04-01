@@ -54,7 +54,7 @@ let rec ty_exp gamma = function
 
   | LetExp (x, e1, e2) ->
      let t1 = ty_exp gamma e1 in
-     ty_exp (Environment.add x t1 gamma) e2
+     let t2 = ty_exp (Environment.add x t1 gamma) e2 in t2
   | FunExp (x, t, e) ->
      let u = ty_exp (Environment.add x t gamma) e in
      TyFun (t,u)

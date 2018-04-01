@@ -3,6 +3,7 @@ open Util
 (* Partial import *)
 let ty_binop = Typing.ty_binop
 let are_consistent = Typing.are_consistent
+let matching_fun = Typing.matching_fun
 
 (* cast-insertion translation *)
 
@@ -30,12 +31,26 @@ let rec translate_exp gamma = function
   | G.BinOp (op, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      let f2, t2 = translate_exp gamma e2 in
-     let (u1, u2, u3) = ty_binop op in (* depends on op *)
+     let u1, u2, u3 = ty_binop op in (* depends on op *)
      if are_consistent t1 u1 then
        if are_consistent t2 u2 then
          (C.BinOp (op, cast_opt f1 t1 u1, cast_opt f2 t2 u2), u3)
        else err "Should not happen"
      else err "Should not happen"
   | G.IfExp (e1, e2, e3) -> todo "translate IfExp"
-  | G.LetExp (x, e1, e2) -> todo "translate LetExp"
-  | G.FunExp (x, e1, e2) -> todo "translate FunExp"
+  | G.LetExp (x, e1, e2) ->
+     let f1, t1 = translate_exp gamma e1 in
+     let f2, t2 = translate_exp (Environment.add x t1 gamma) e2 in
+     (C.LetExp (x, f1, f2), t2)
+  | G.FunExp (x, t, e) ->
+     let f, u = translate_exp (Environment.add x t gamma) e in
+     (C.FunExp (x, t, f), TyFun (t, u))
+  | G.AppExp (e1, e2) ->        (* interesting case *)
+     let f1, t1 = translate_exp gamma e1 in
+     let f2, t2 = translate_exp gamma e2 in
+     let t11, t12 = matching_fun t1 in
+     if are_consistent t2 t11
+     then (C.AppExp (cast_opt f1 t1 (TyFun (t11, t12)),
+                     cast_opt f2 t2 t11),
+           t12)
+     else err "Should not happen"
