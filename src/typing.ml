@@ -1,6 +1,7 @@
 open Syntax
 open Syntax.G
 open Util
+open Printf
 
 (* is_consistent としたいところだが，
  * are_consistent の方が正しくないか？？ *)
@@ -32,7 +33,7 @@ let rec ty_exp gamma = function
      (try
         let t = Environment.find x gamma in t
       with
-      | Not_found -> err "Not bound")
+      | Not_found -> err @@ sprintf "%s is not bound" (string_of_id x))
   | ILit _ -> TyInt
   | BLit _ -> TyBool
   | BinOp (op, e1, e2) ->
@@ -41,16 +42,19 @@ let rec ty_exp gamma = function
      let (u1, u2, u3) = ty_binop op in
      if are_consistent t1 u1 then
        if are_consistent t2 u2 then u3
-       else err (string_of_ty t2 ^ " and " ^ string_of_ty u2 ^ "are not consistent")
-     else err (string_of_ty t1 ^ " and " ^ string_of_ty u1 ^ " are not consistent")
+       else err @@ sprintf "GTBinOp-R: %s and %s are not consistent"
+                     (string_of_ty t2) (string_of_ty u2)
+     else err @@ sprintf "GTBinOp-L: %s and %s are not consistent"
+                   (string_of_ty t1) (string_of_ty u1)
   | IfExp (e1, e2, e3) ->
      let t1 = ty_exp gamma e1 in
      if are_consistent t1 TyBool then
        let t2 = ty_exp gamma e2 in
        let t3 = ty_exp gamma e3 in
        (* TODO: t2,t3 の join を取る必要があるのでは？ *)
-       todo "typing if"
-     else err (string_of_ty t1 ^ " is not consistent with bool")
+       todo "typing IfExp"
+     else err @@ sprintf "GTIf-test: %s is not consistent with bool"
+                   (string_of_ty t1)
 
   | LetExp (x, e1, e2) ->
      let t1 = ty_exp gamma e1 in
@@ -63,4 +67,5 @@ let rec ty_exp gamma = function
      let t11,t12 = matching_fun t1 in
      let t2 = ty_exp gamma e2 in
      if are_consistent t2 t11 then t12
-     else err "err"                (* typing_error: not consistent *)
+     else err @@ sprintf "GTApp: %s and %s are not consistent"
+                   (string_of_ty t2) (string_of_ty t11)
