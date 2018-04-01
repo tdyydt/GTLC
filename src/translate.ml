@@ -1,4 +1,8 @@
 open Syntax
+open Util
+(* Partial import *)
+let ty_binop = Typing.ty_binop
+let are_consistent = Typing.are_consistent
 
 (* cast-insertion translation *)
 
@@ -13,7 +17,7 @@ let cast_opt f t1 t2 =
 (* [G |- e ~> f : T]
  * input: G, e & output: f, T *)
 (* G.exp -> C.exp *)
-let rec translate_exp gamma =
+let rec translate_exp gamma = function
   | G.Var x ->
      (try
         let t = Environment.find x gamma in (C.Var x, t)
@@ -21,8 +25,8 @@ let rec translate_exp gamma =
       (* G.typing をしてからキャスト挿入するで，
        * キャスト挿入でエラーが起きることは有り得ないべき *)
       | Not_found -> err "Not bound")
-  | G.ILit n -> C.ILit n
-  | G.BLit b -> C.BLit b
+  | G.ILit n -> (C.ILit n, TyInt)
+  | G.BLit b -> (C.BLit b, TyBool)
   | G.BinOp (op, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      let f2, t2 = translate_exp gamma e2 in
@@ -31,7 +35,7 @@ let rec translate_exp gamma =
        if are_consistent t2 u2 then
          (C.BinOp (op, cast_opt f1 t1 u1, cast_opt f2 t2 u2), u3)
        else err "Should not happen"
-     else err err "Should not happen"
+     else err "Should not happen"
   | G.IfExp (e1, e2, e3) -> todo "translate IfExp"
   | G.LetExp (x, e1, e2) -> todo "translate LetExp"
-  | G.FunExp (x, e1, e2) ->
+  | G.FunExp (x, e1, e2) -> todo "translate FunExp"

@@ -6,10 +6,9 @@ MENHIROPTIONS=--explain
 
 PROGNAME=gtlc
 
-# The order of files matters
-# 順番を依存関係の順番にする必要がある？
-# => depend を使うことで，その必要がなくなっていそう
-OBJS=syntax.cmo environment.cmo parser.cmo lexer.cmo typing.cmo
+# Without depend, the order of files matters
+OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo typing.cmo \
+     translate.cmo
 
 DEPEND += lexer.ml parser.ml
 

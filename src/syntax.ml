@@ -1,3 +1,5 @@
+open Util
+
 type id = string
 
 type ty =
@@ -53,4 +55,6 @@ module C = struct
     (* [f: t1 => t2] => CastExp(f,t1,t2) *)
     | CastExp of exp * ty * ty
     (* | BlameExp *)
+
+  let rec string_of_exp = todo "string of C.exp"
 end
