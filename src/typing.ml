@@ -45,7 +45,15 @@ let rec ty_exp gamma = function
        if are_consistent t2 u2 then u3
        else err (string_of_ty t2 ^ " and " ^ string_of_ty u2 ^ "are not consistent")
      else err (string_of_ty t1 ^ " and " ^ string_of_ty u1 ^ " are not consistent")
-  | IfExp (e1, e2, e3) -> todo "typing if"
+  | IfExp (e1, e2, e3) ->
+     let t1 = ty_exp gamma e1 in
+     if are_consistent t1 TyBool then
+       let t2 = ty_exp gamma e2 in
+       let t3 = ty_exp gamma e3 in
+       (* TODO: t2,t3 の join を取る必要があるのでは？ *)
+       todo "typing if"
+     else err (string_of_ty t1 ^ " is not consistent with bool")
+
   | LetExp (x, e1, e2) ->
      let t1 = ty_exp gamma e1 in
      ty_exp (Environment.add x t1 gamma) e2
