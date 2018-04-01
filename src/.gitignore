@@ -8,3 +8,4 @@ parser.ml
 parser.mli
 parser.output
 parser.automaton
+parser.conflicts

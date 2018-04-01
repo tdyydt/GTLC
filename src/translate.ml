@@ -4,6 +4,7 @@ open Util
 let ty_binop = Typing.ty_binop
 let are_consistent = Typing.are_consistent
 let matching_fun = Typing.matching_fun
+let join = Typing.join
 
 (* cast-insertion translation *)
 
@@ -35,9 +36,19 @@ let rec translate_exp gamma = function
      if are_consistent t1 u1 then
        if are_consistent t2 u2 then
          (C.BinOp (op, cast_opt f1 t1 u1, cast_opt f2 t2 u2), u3)
-       else err "Should not happen"
-     else err "Should not happen"
-  | G.IfExp (e1, e2, e3) -> todo "translate IfExp"
+       else err "CI-BinOp: Should not happen"
+     else err "CI-BinOp: Should not happen"
+  | G.IfExp (e1, e2, e3) ->
+     let f1, t1 = translate_exp gamma e1 in
+     if are_consistent t1 TyBool then
+       let f2, t2 = translate_exp gamma e2 in
+       let f3, t3 = translate_exp gamma e3 in
+       let u = join t2 t3 in
+       (C.IfExp (cast_opt f1 t1 TyBool,
+                 cast_opt f2 t2 u,
+                 cast_opt f3 t3 u),
+        u)
+     else err "CI-If-test: Should not happen"
   | G.LetExp (x, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      let f2, t2 = translate_exp (Environment.add x t1 gamma) e2 in
@@ -53,4 +64,4 @@ let rec translate_exp gamma = function
      then (C.AppExp (cast_opt f1 t1 (TyFun (t11, t12)),
                      cast_opt f2 t2 t11),
            t12)
-     else err "Should not happen"
+     else err "CI-App: Should not happen"
