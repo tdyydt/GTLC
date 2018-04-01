@@ -1,4 +1,5 @@
 open Syntax
+open Syntax.G
 
 (* Error *)
 exception Error of string
@@ -17,6 +18,7 @@ let rec are_consistent t1 t2 = match (t1,t2) with
      are_consistent t11 t21 && are_consistent t12 t22
   | (_, _) -> false
 
+(* option で返しても良い？ *)
 let matching_fun = function
   | TyFun (t1, t2) -> (t1, t2)
   | TyDyn -> (TyDyn, TyDyn)

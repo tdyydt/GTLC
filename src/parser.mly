@@ -1,5 +1,6 @@
 %{
 open Syntax
+open Syntax.G
      (* open すると，非終端記号の名前と，
       * AST の variant の名前とが見分けづらくなりがち *)
 %}
@@ -24,7 +25,7 @@ open Syntax
 %left MULT DIV
 
 %start toplevel
-%type <Syntax.exp> toplevel     (* program に変更？ *)
+%type <Syntax.G.exp> toplevel     (* program に変更？ *)
 %%
 
 toplevel :
