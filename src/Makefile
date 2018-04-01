@@ -8,14 +8,16 @@ PROGNAME=gtlc
 
 # Without depend, the order of files matters
 OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo typing.cmo \
-     translate.cmo
+     translate.cmo eval.cmo
 
 DEPEND += lexer.ml parser.ml
 
+all: $(PROGNAME)
 
 $(PROGNAME): $(DEPEND) $(OBJS) main.cmo
 	$(OCAMLC) -o $@ $(OBJS) main.cmo
 
+# Common rules: replacement of suffix rules
 %.cmo: %.ml
 	$(OCAMLC) -c $<
 %.cmi: %.mli
