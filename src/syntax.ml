@@ -71,21 +71,21 @@ module C = struct
     | Var x -> string_of_id x
     | ILit n -> string_of_int n
     | BLit b -> string_of_bool b
-    | BinOp (op, e1, e2) ->
+    | BinOp (op, f1, f2) ->
        sprintf "(%s %s %s)"
-         (string_of_exp e1) (string_of_binop op) (string_of_exp e2)
-    | IfExp (e1, e2, e3) ->
+         (string_of_exp f1) (string_of_binop op) (string_of_exp f2)
+    | IfExp (f1, f2, f3) ->
        sprintf "(if %s then %s else %s)"
-         (string_of_exp e1) (string_of_exp e2) (string_of_exp e3)
-    | LetExp (x, e1, e2) ->
+         (string_of_exp f1) (string_of_exp f2) (string_of_exp f3)
+    | LetExp (x, f1, f2) ->
        sprintf "(let %s = %s in %s)"
-         (string_of_id x) (string_of_exp e1) (string_of_exp e2)
-    | FunExp (x, t, e) ->
+         (string_of_id x) (string_of_exp f1) (string_of_exp f2)
+    | FunExp (x, t, f) ->
        sprintf "(fun (%s : %s) -> %s)"
-         (string_of_id x) (string_of_ty t) (string_of_exp e)
-    | AppExp (e1, e2) ->
-       sprintf "(%s %s)" (string_of_exp e1) (string_of_exp e2)
-    | CastExp (e, t1, t2) ->
+         (string_of_id x) (string_of_ty t) (string_of_exp f)
+    | AppExp (f1, f2) ->
+       sprintf "(%s %s)" (string_of_exp f1) (string_of_exp f2)
+    | CastExp (f, t1, t2) ->
        sprintf "(%s : %s => %s)"
-         (string_of_exp e) (string_of_ty t1) (string_of_ty t2)
+         (string_of_exp f) (string_of_ty t1) (string_of_ty t2)
 end
