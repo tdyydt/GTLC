@@ -20,9 +20,21 @@ type value =
   (* 関数閉包・環境を持つ？？ *)
   (* function name, body, and environment (= for free variables) *)
   | FunV of id * exp * value Environment.t
-  (* tagged value, or injection
-   * cast from Ground to TyDyn *)
+  (* Wrapped function:
+   * [v: (t1 -> t2) => (t3 -> t4)] => Wrapped (v,t1,t2,t3,t4) *)
+  (* TODO: 他の実装でなぜ無いのか，理解できない *)
+  | Wrapped of value * ty * ty * ty * ty
+  (* Tagged value, or Injection:
+   * [v: G => ?] => Tagged (tag, v)
+   * where tag corresponds to G(round) *)
   | Tagged of tag * value
+
+let rec string_of_value = function
+  | IntV n -> string_of_int n
+  | BoolV b -> string_of_bool b
+  | FunV _ -> todo "function"
+  | Wrapped _ -> todo "wrapped"
+  | Tagged _ -> todo "tagged"
 
 (* Big-step evaluation ? *)
 let rec eval_exp env = function
@@ -64,6 +76,12 @@ let rec eval_exp env = function
       | FunV (x, body, fun_env) ->
          (* [(fun (x:_) -> body) v2] *)
          eval_exp (Environment.add x v2 fun_env) body
+      (* AppCast (Wrap) *)
+      | Wrapped (v1', t1, t2, t3, t4) ->
+         (* [(v1: t1 -> t2 => t3 -> t4) v2] *)
+         (* eval_exp env (CastExp (AppExp (v1', CastExp (v2, t3, t1)),
+          *                        t2, t4)) *)
+         todo "AppCast"
       | _ -> err "eval App: Non-function value is applied")
   | CastExp (f, t1, t2) ->
      let v = eval_exp env f in
@@ -73,12 +91,19 @@ let rec eval_exp env = function
       | TyBool, TyBool -> v
       (* IdStar *)
       | TyDyn, TyDyn -> v
-      (* Ground *)
+      (* Put tag *)
       (* 動的型へのキャストの際に，タグを付ける(キャスト前の型の情報を表す) *)
       | TyInt, TyDyn -> Tagged (I, v)
       | TyBool, TyDyn -> Tagged (B, v)
-      | TyFun _, TyDyn -> (* Tagged (F, *) todo ""
+      (* Ground = decompose cast *)
+      | TyFun (t11, t12), TyDyn ->
+         (* [v: (t11 -> t12) => (? -> ?) => ?] *)
+         Tagged (F, Wrapped (v, t11, t12, TyDyn, TyDyn))
       (* Expand *)
+      (* Expandのケースが謎
+       * Tが関数型のものは，あるのか？？ *)
+      (* | TyDyn, TyFun (t21, t22) -> todo "やはりわからn" *)
+
 
       (* Succeed (Collapse), Fail (Conflict) *)
       | TyDyn, TyInt ->
@@ -99,4 +124,5 @@ let rec eval_exp env = function
           | Tagged (_, _) -> err "Blame: Fail fun"
           | _ -> err "Should not happen: Untagged value")
 
-      (* AppCast (Wrap) *)
+      | _, _ -> err "Should not happen or Not implemented"
+     )
