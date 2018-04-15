@@ -3,9 +3,7 @@ open Syntax.C
 open Util
 open Printf
 
-(* evaluation *)
-(* TODO: small-step operational semantics
- * その場合，関数 step など，sf にある *)
+(* evaluation, big-step *)
 
 (* TagInt, TagBool, TagFun でいいのでは？ *)
 type tag =
@@ -13,51 +11,43 @@ type tag =
   | B                           (* bool *)
   | F                           (* Function (Arrow) [?->?] *)
 
+let string_of_tag = function
+  | I -> "int"
+  | B -> "bool"
+  | F -> "(? -> ?)"
+
 (* exval, dnval *)
 type value =
   | IntV of int
   | BoolV of bool
-  (* 関数閉包・環境を持つ？？自由変数の情報が必要なため *)
-  (* function name, body, and environment (= for free variables) *)
+  (* function name, body,
+   * and environment, which contains values of free variables *)
   | FunV of id * exp * value Environment.t
   (* Wrapped function:
    * [v: (t1 -> t2) => (t3 -> t4)] => Wrapped (v,t1,t2,t3,t4) *)
-  (* TODO: 他の実装でなぜ無いのか，理解できない *)
   | Wrapped of value * ty * ty * ty * ty
   (* Tagged value, or Injection:
    * [v: G => ?] => Tagged (tag, v)
    * where tag corresponds to G(round) *)
   | Tagged of tag * value
 
-(* convert value to C.exp *)
-let rec exp_of_value = function
-  | IntV n -> ILit n
-  | BoolV b -> BLit b
-  | FunV (id, f, _) ->
-     let dummy_ty = TyDyn in    (* Fun の型の情報は，eval には不要なので，
-                                 * value の定義では消している．しかし，
-                                 * exp にするには，必要なため dummy の型を入れる必要がある
-                                 * ? に意味はない *)
-     FunExp (id, dummy_ty, f)
+let rec string_of_value = function
+  | IntV n -> string_of_int n
+  | BoolV b -> string_of_bool b
+  | FunV (_, _, _) -> "<fun>"
+     (* sprintf "(fun (%s : _) -> %s)"
+      *   (string_of_id id) (string_of_exp f) *)
   | Wrapped (v, t1, t2, t3, t4) ->
-     CastExp (exp_of_value v, TyFun (t1, t2), TyFun (t3, t4))
-  | Tagged (tag, v) -> let f = exp_of_value v in
-                       (match tag with
-                        | I -> CastExp (f, TyInt, TyDyn)
-                        | B -> CastExp (f, TyBool, TyDyn)
-                        | F -> CastExp (f, TyFun (TyDyn, TyDyn), TyDyn))
-
-(* C.string_of_exp に帰着 *)
-let string_of_value v = string_of_exp (exp_of_value v)
-(* let rec string_of_value = function
- *   | IntV n -> string_of_int n
- *   | BoolV b -> string_of_bool b
- *   | FunV _ -> todo "function"
- *   | Wrapped _ -> todo "wrapped"
- *   | Tagged (tag, v) -> todo "tagged" *)
+     (* How should wrapped functions be displayed? *)
+     sprintf "(%s: (%s -> %s) => (%s -> %s))"
+       (string_of_value v) (string_of_ty t1) (string_of_ty t2)
+       (string_of_ty t3) (string_of_ty t4)
+  | Tagged (tag, v) ->
+     sprintf "(%s: %s => ?)"
+       (string_of_value v) (string_of_tag tag)
 
 
-(* Big-step evaluation ? *)
+(* Big-step evaluation *)
 let rec eval_exp env = function
   | Var x ->
      (try
@@ -93,23 +83,11 @@ let rec eval_exp env = function
   | AppExp (f1, f2) ->
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
-     (match v1 with
-      | FunV (x, body, fun_env) ->
-         (* [(fun (x:_) -> body) v2] *)
-         eval_exp (Environment.add x v2 fun_env) body
-      (* AppCast (Wrap) *)
-      | Wrapped (v1', t1, t2, t3, t4) ->
-         (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
-          * [v1' (v2: t3 => t1): t2 => t4] *)
-         eval_exp env
-           (CastExp (AppExp (exp_of_value v1',
-                             CastExp (exp_of_value v2, t3, t1)),
-                     t2, t4))
-      | _ -> err "eval App: Non-function value is applied")
+     eval_app v1 v2
   | CastExp (f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2
 
-(* Eval [v: t1 => t2] *)
+(* evaluate cast [v: t1 => t2] *)
 (* value -> ty -> ty -> value *)
 and eval_cast v t1 t2 = match (t1, t2) with
   (* IdBase *)
@@ -158,6 +136,15 @@ and eval_cast v t1 t2 = match (t1, t2) with
 
   | _, _ -> err "Should not happen or Not implemented"
 
-(* application [v1 v2]
- * For the case: AppCast = Decompose cast *)
-and eval_app v1 v2 = todo ""
+(* evaluate application [v1 v2] *)
+(* value -> value -> value *)
+and eval_app v1 v2 = match v1 with
+  | FunV (x, body, fun_env) ->
+     (* [(fun (x:_) -> body) v2] *)
+     eval_exp (Environment.add x v2 fun_env) body
+  (* Wrap (AppCast) *)
+  | Wrapped (v1', t1, t2, t3, t4) ->
+     (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
+      * [(v1' (v2: t3 => t1)): t2 => t4] *)
+     eval_cast (eval_app v1' (eval_cast v2 t3 t1)) t2 t4 (* TODO: verify this *)
+  | _ -> err "eval App: Non-function value is applied"
