@@ -107,51 +107,57 @@ let rec eval_exp env = function
                      t2, t4))
       | _ -> err "eval App: Non-function value is applied")
   | CastExp (f, t1, t2) ->
-     let v = eval_exp env f in
-     (match t1, t2 with
-      (* IdBase *)
-      | TyInt, TyInt -> v
-      | TyBool, TyBool -> v
-      (* IdStar *)
-      | TyDyn, TyDyn -> v
-      (* Put tag *)
-      (* 動的型へのキャストの際に，タグを付ける(キャスト前の型の情報を表す) *)
-      | TyInt, TyDyn -> Tagged (I, v)
-      | TyBool, TyDyn -> Tagged (B, v)
-      (* Ground = decompose cast *)
-      | TyFun (t11, t12), TyDyn ->
-         (* [v: (t11 -> t12) => (? -> ?) => ?] *)
-         Tagged (F, Wrapped (v, t11, t12, TyDyn, TyDyn))
+     let v = eval_exp env f in eval_cast v t1 t2
 
-      (* Succeed (Collapse), Fail (Conflict) *)
-      | TyDyn, TyInt ->
-         (match v with
-          (* [v': int => ? => int]
-           * int のタグが付いていたならば ok *)
-          | Tagged (I, v') -> v'
-          | Tagged (_, _) -> err "Blame: Fail int"
-          | _ -> err "Should not happen: Untagged value")
-      | TyDyn, TyBool ->
-         (match v with
-          | Tagged (B, v') -> v'
-          | Tagged (_, _) -> err "Blame: Fail bool"
-          | _ -> err "Should not happen: Untagged value")
-      | TyDyn, TyFun (TyDyn, TyDyn) ->
-         (match v with
-          | Tagged (F, v') -> v'
-          | Tagged (_, _) -> err "Blame: Fail fun" (* v: ? => (? -> ?) の時に，
-                                                    * v は必ず Tagged (F, _)だと言っている
-                                                    * そうでないと blame だと言っている *)
-          | _ -> err "Should not happen: Untagged value")
+(* Eval [v: t1 => t2] *)
+(* value -> ty -> ty -> value *)
+and eval_cast v t1 t2 = match (t1, t2) with
+  (* IdBase *)
+  | TyInt, TyInt -> v
+  | TyBool, TyBool -> v
+  (* IdStar *)
+  | TyDyn, TyDyn -> v
+  (* Put tag *)
+  (* 動的型へのキャストの際に，タグを付ける(キャスト前の型の情報を表す) *)
+  | TyInt, TyDyn -> Tagged (I, v)
+  | TyBool, TyDyn -> Tagged (B, v)
+  (* Ground = decompose cast *)
+  | TyFun (t11, t12), TyDyn ->
+     (* [v: (t11 -> t12) => (? -> ?) => ?] *)
+     Tagged (F, Wrapped (v, t11, t12, TyDyn, TyDyn))
 
-      (* Expand *)
-      (* Expandのケースが謎
-       * Tが関数型のものは，あるのか？？ *)
-      | TyDyn, TyFun (t21, t22) ->
-         (* t21, t22 はともに ? ではない *)
-         (* [v: ? => (t21 -> t22)] =>
-          * [v: ? => (? -> ?) => (t21 -> t22)]  *)
-         todo "Can this happen??"
+  (* Succeed (Collapse), Fail (Conflict) *)
+  | TyDyn, TyInt ->
+     (match v with
+      (* [v': int => ? => int]
+       * int のタグが付いていたならば ok *)
+      | Tagged (I, v') -> v'
+      | Tagged (_, _) -> err "Blame: Fail int"
+      | _ -> err "Should not happen: Untagged value")
+  | TyDyn, TyBool ->
+     (match v with
+      | Tagged (B, v') -> v'
+      | Tagged (_, _) -> err "Blame: Fail bool"
+      | _ -> err "Should not happen: Untagged value")
+  | TyDyn, TyFun (TyDyn, TyDyn) ->
+     (match v with
+      | Tagged (F, v') -> v'
+      | Tagged (_, _) -> err "Blame: Fail fun" (* v: ? => (? -> ?) の時に，
+                                                * v は必ず Tagged (F, _)だと言っている
+                                                * そうでないと blame だと言っている *)
+      | _ -> err "Should not happen: Untagged value")
 
-      | _, _ -> err "Should not happen or Not implemented"
-     )
+  (* Expand *)
+  (* Expandのケースが謎
+   * Tが関数型のものは，あるのか？？ *)
+  | TyDyn, TyFun (t21, t22) ->
+     (* t21, t22 はともに ? ではない *)
+     (* [v: ? => (t21 -> t22)] =>
+      * [v: ? => (? -> ?) => (t21 -> t22)]  *)
+     todo "Can this happen??"
+
+  | _, _ -> err "Should not happen or Not implemented"
+
+(* application [v1 v2]
+ * For the case: AppCast = Decompose cast *)
+and eval_app v1 v2 = todo ""
