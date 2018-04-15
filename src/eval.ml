@@ -101,10 +101,10 @@ and eval_cast v t1 t2 = match (t1, t2) with
   | TyBool, TyDyn -> Tagged (B, v)
   (* Ground = decompose cast *)
   | TyFun (t11, t12), TyDyn ->
-     (* [v: (t11 -> t12) => (? -> ?) => ?] *)
-     Tagged (F, Wrapped (v, t11, t12, TyDyn, TyDyn))
+     (* [(v: (t11 -> t12) => (? -> ?)): (? -> ?) => ?] *)
+     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn) in Tagged (F, v')
 
-  (* Succeed (Collapse), Fail (Conflict) *)
+  (* Succeed (Collapse), or Fail (Conflict) *)
   | TyDyn, TyInt ->
      (match v with
       (* [v': int => ? => int]
@@ -126,15 +126,15 @@ and eval_cast v t1 t2 = match (t1, t2) with
       | _ -> err "Should not happen: Untagged value")
 
   (* Expand *)
-  (* Expandのケースが謎
-   * Tが関数型のものは，あるのか？？ *)
+  (* When does this happen? *)
   | TyDyn, TyFun (t21, t22) ->
-     (* t21, t22 はともに ? ではない *)
-     (* [v: ? => (t21 -> t22)] =>
-      * [v: ? => (? -> ?) => (t21 -> t22)]  *)
-     todo "Can this happen??"
+     (* t21, t22 がともに ? ではない *)
+     (* [v: ? => (t21 -> t22)] -->
+      * [(v: ? => (? -> ?)): (? -> ?) => (t21 -> t22)] *)
+     let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn)) in
+     Wrapped (v', TyDyn, TyDyn, t21, t22)
 
-  | _, _ -> err "Should not happen or Not implemented"
+  | _, _ -> err "Should be typing error (or maybe not implemented?)"
 
 (* evaluate application [v1 v2] *)
 (* value -> value -> value *)
