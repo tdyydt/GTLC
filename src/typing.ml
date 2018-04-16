@@ -13,11 +13,11 @@ let rec are_consistent t1 t2 = match (t1,t2) with
      are_consistent t11 t21 && are_consistent t12 t22
   | (_, _) -> false
 
-(* option で返しても良い？ *)
+(* ty -> (ty * ty) option *)
 let matching_fun = function
-  | TyFun (t1, t2) -> (t1, t2)
-  | TyDyn -> (TyDyn, TyDyn)
-  | _ -> err "matching error"
+  | TyFun (t1, t2) -> Some (t1, t2)
+  | TyDyn -> Some (TyDyn, TyDyn)
+  | _ -> None                   (* means matching error *)
 
 (* join of typs w.r.t consistency *)
 (* もし，join が存在しない場合はエラー？ or optional で返す *)
@@ -39,7 +39,7 @@ let rec ty_exp gamma = function
      (try
         let t = Environment.find x gamma in t
       with
-      | Not_found -> err @@ sprintf "%s is not bound" (string_of_id x))
+      | Not_found -> err @@ sprintf "GT-Var: %s is not bound" (string_of_id x))
   | ILit _ -> TyInt
   | BLit _ -> TyBool
   | BinOp (op, e1, e2) ->
@@ -69,8 +69,11 @@ let rec ty_exp gamma = function
      TyFun (t,u)
   | AppExp (e1, e2) ->
      let t1 = ty_exp gamma e1 in
-     let t11,t12 = matching_fun t1 in
-     let t2 = ty_exp gamma e2 in
-     if are_consistent t2 t11 then t12
-     else err @@ sprintf "GT-App: %s and %s are not consistent"
-                   (string_of_ty t2) (string_of_ty t11)
+     (match matching_fun t1 with
+      | Some (t11, t12) ->
+         let t2 = ty_exp gamma e2 in
+         if are_consistent t2 t11 then t12
+         else err @@ sprintf "GT-App: %s and %s are not consistent"
+                       (string_of_ty t2) (string_of_ty t11)
+      | None -> err @@ sprintf "GT-App: %s is not a function type"
+                         (string_of_ty t1))
