@@ -25,7 +25,8 @@ let rec translate_exp gamma = function
         let t = Environment.find x gamma in (C.Var x, t)
       with
       (* G.typing をしてからキャスト挿入するで，
-       * キャスト挿入でエラーが起きることは有り得ないべき *)
+       * キャスト挿入でエラーが起きることは有り得ないべき
+       * Implementation error *)
       | Not_found -> err "Not bound")
   | G.ILit n -> (C.ILit n, TyInt)
   | G.BLit b -> (C.BLit b, TyBool)

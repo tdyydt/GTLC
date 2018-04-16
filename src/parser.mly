@@ -1,8 +1,6 @@
 %{
 open Syntax
 open Syntax.G
-     (* open すると，非終端記号の名前と，
-      * AST の variant の名前とが見分けづらくなりがち *)
 %}
 
 %token LPAREN RPAREN SEMISEMI
@@ -43,15 +41,12 @@ expr :
     { IfExp (e1, e2, e3) }
   | LET x=ID EQ e1=expr IN e2=expr %prec prec_let
     { LetExp (x, e1, e2) }
-  (* この規則の優先順位は，default では一番右の RARROW の優先順位と同じだが，
-   * RARROW が fun ty にも現れることを考えると prec_fun の導入も妥当？ *)
   (* TODO: Is the parenthesis needed?? in (x:t) *)
   | FUN LPAREN x=ID COLON t=ty RPAREN RARROW e=expr %prec prec_fun
     { FunExp (x, t, e) }
   | e=app_expr { e }
 
-(* prec_app を使って conflicts を解消しようとしたが，上手くいかない？？
- * app に関してのみ，優先度に応じた nonterminal を追加する方針を利用 *)
+(* conflicts を解消できたが，他の部分との一貫性がない *)
 app_expr :
   (* application: Left associative *)
   | e1=app_expr e2=simple_expr { AppExp (e1, e2) }

@@ -3,9 +3,7 @@ open Syntax.C
 open Util
 open Printf
 
-(* evaluation, big-step *)
-
-(* TagInt, TagBool, TagFun でいいのでは？ *)
+(* rename to TagInt, TagBool, TagFun ?? *)
 type tag =
   | I                           (* int *)
   | B                           (* bool *)
@@ -35,8 +33,6 @@ let rec string_of_value = function
   | IntV n -> string_of_int n
   | BoolV b -> string_of_bool b
   | FunV (_, _, _) -> "<fun>"
-     (* sprintf "(fun (%s : _) -> %s)"
-      *   (string_of_id id) (string_of_exp f) *)
   | Wrapped (v, t1, t2, t3, t4) ->
      (* How should wrapped functions be displayed? *)
      sprintf "(%s: (%s -> %s) => (%s -> %s))"
@@ -95,8 +91,8 @@ and eval_cast v t1 t2 = match (t1, t2) with
   | TyBool, TyBool -> v
   (* IdStar *)
   | TyDyn, TyDyn -> v
-  (* Put tag *)
-  (* 動的型へのキャストの際に，タグを付ける(キャスト前の型の情報を表す) *)
+  (* Put tag, already value *)
+  (* 動的型へのキャストの際に，キャスト前の型の情報を表すタグを付ける *)
   | TyInt, TyDyn -> Tagged (I, v)
   | TyBool, TyDyn -> Tagged (B, v)
   (* Ground = decompose cast *)
@@ -107,8 +103,7 @@ and eval_cast v t1 t2 = match (t1, t2) with
   (* Succeed (Collapse), or Fail (Conflict) *)
   | TyDyn, TyInt ->
      (match v with
-      (* [v': int => ? => int]
-       * int のタグが付いていたならば ok *)
+      (* [v': int => ? => int] --> v' *)
       | Tagged (I, v') -> v'
       | Tagged (_, _) -> err "Blame: Fail int"
       | _ -> err "Should not happen: Untagged value")
@@ -120,9 +115,9 @@ and eval_cast v t1 t2 = match (t1, t2) with
   | TyDyn, TyFun (TyDyn, TyDyn) ->
      (match v with
       | Tagged (F, v') -> v'
-      | Tagged (_, _) -> err "Blame: Fail fun" (* v: ? => (? -> ?) の時に，
-                                                * v は必ず Tagged (F, _)だと言っている
-                                                * そうでないと blame だと言っている *)
+      | Tagged (_, _) -> err "Blame: Fail fun"
+      (* v: ? => (? -> ?) の時に，
+       * v が Tagged (F, v') でないと blame *)
       | _ -> err "Should not happen: Untagged value")
 
   (* Expand *)

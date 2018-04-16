@@ -3,8 +3,6 @@ open Syntax.G
 open Util
 open Printf
 
-(* is_consistent としたいところだが，
- * are_consistent の方が正しくないか？？ *)
 (* ty -> ty -> bool *)
 let rec are_consistent t1 t2 = match (t1,t2) with
   | (TyDyn, _) -> true
@@ -22,18 +20,19 @@ let matching_fun = function
   | _ -> err "matching error"
 
 (* join of typs w.r.t consistency *)
-(* もし，join が存在しない場合はエラー？ *)
+(* もし，join が存在しない場合はエラー？ or optional で返す *)
 let rec join t1 t2 = match (t1, t2) with
   | _ -> todo "Join"
 
 (* type of binOp *)
-(* binOp -> ty *)
+(* binOp -> ty * ty * ty *)
 let ty_binop = function
   | (Plus | Minus | Mult | Div) -> (TyInt, TyInt, TyInt)
   | (Lt | Gt) -> (TyInt, TyInt, TyBool)
 
 
-(* TODO: ty_exp を module C = の中に入れる *)
+(* TODO: ty_exp を module G = の中に入れる
+ * Add C.ty_exp *)
 (* exp -> ty Environment.t -> ty *)
 let rec ty_exp gamma = function
   | Var x ->

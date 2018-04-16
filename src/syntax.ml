@@ -2,7 +2,7 @@ open Util
 open Printf
 
 type id = string
-let string_of_id x = x          (* 使うかどうか悩む *)
+let string_of_id x = x          (* Should be used *)
 
 type ty =
   | TyInt
@@ -21,7 +21,7 @@ let rec string_of_ty = function
      str1 ^ " -> " ^ str2
   | TyDyn -> "?"
 
-(* TODO: Eq は？？ *)
+(* TODO: Add Eq *)
 type binOp = Plus | Minus | Mult | Div | Lt | Gt (* | LAnd | LOr *)
 
 let string_of_binop = function
@@ -32,9 +32,8 @@ let string_of_binop = function
   | Lt -> "<"
   | Gt -> ">"
 
-(* Gradual: exp *)
+
 (* Gradually typed surface language *)
-(* TODO: 別ファイルか，モジュールにする *)
 module G = struct
   type exp =
     | Var of id
@@ -48,6 +47,8 @@ module G = struct
     | FunExp of id * ty * exp
     | AppExp of exp * exp
     (* | LetRecExp *)
+
+    (* TODO: Add decl *)
 end
 
 (* Cast Calculus *)
@@ -63,10 +64,8 @@ module C = struct
     | AppExp of exp * exp
     (* [f: t1 => t2] => CastExp(f,t1,t2) *)
     | CastExp of exp * ty * ty
-    (* | BlameExp *)
 
-  (* compoud exp の文字列の際には，必ず (,) を付ける
-   * 優先度に応じてカッコを減らすのは，面倒過ぎる？ *)
+  (* TODO: reduce parentheses, printer *)
   let rec string_of_exp = function
     | Var x -> string_of_id x
     | ILit n -> string_of_int n

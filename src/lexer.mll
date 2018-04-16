@@ -19,8 +19,7 @@ let reservedWords = [
 ]
 }
 
-(* '\012' は10進で，Form Feed を表す
- * '\f' と書くが，OCaml ではこの書き方ができない *)
+(* '\012' は10進で，Form Feed (\f) を表す *)
 (* '\r' も追加？ *)
 let space = [' ' '\t' '\012' '\n']
 

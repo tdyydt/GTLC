@@ -6,4 +6,3 @@ val remove : Syntax.id -> 'a t -> 'a t
 
 val find : Syntax.id -> 'a t -> 'a
 val mem : Syntax.id -> 'a t -> bool
-(* val values : 'a t -> 'a list *)
