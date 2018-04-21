@@ -14,16 +14,25 @@ DEPEND += lexer.ml parser.ml
 
 all: $(PROGNAME)
 
-$(PROGNAME): $(DEPEND) $(OBJS) main.cmo
-	$(OCAMLC) -o $@ $(OBJS) main.cmo
+# $(PROGNAME): $(DEPEND) $(OBJS) main.cmo
+# 	$(OCAMLC) -o $@ $(OBJS) main.cmo
 
-# Common rules: replacement of suffix rules
+$(PROGNAME): lib.cma main.cmo
+	$(OCAMLC) -o $@ $^
+
+# library (.cma)
+lib.cma: $(DEPEND) $(OBJS)
+	$(OCAMLC) -a -o $@ $(OBJS)
+
+
+# Common rules (replacement of suffix rules)
 %.cmo: %.ml
 	$(OCAMLC) -c $<
 %.cmi: %.mli
 	$(OCAMLC) -c $<
 # %.cmx: %.ml
 # 	$(OCAMLOPT)
+
 
 # parser & lexer
 parser.ml parser.mli: parser.mly
