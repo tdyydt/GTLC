@@ -2,7 +2,7 @@ module M =
   Map.Make (
       struct
         type t = Syntax.id
-        let compare = compare
+        let compare (x : Syntax.id) y = compare x y
       end
     )
 

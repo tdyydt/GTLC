@@ -14,9 +14,6 @@ DEPEND += lexer.ml parser.ml
 
 all: $(PROGNAME)
 
-# $(PROGNAME): $(DEPEND) $(OBJS) main.cmo
-# 	$(OCAMLC) -o $@ $(OBJS) main.cmo
-
 $(PROGNAME): lib.cma main.cmo
 	$(OCAMLC) -o $@ $^
 

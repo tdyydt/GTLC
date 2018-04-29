@@ -14,11 +14,11 @@ let rec string_of_ty = function
   | TyInt -> "int"
   | TyBool -> "bool"
   | TyFun (t1,t2) ->
+     (* If t1 is TyFun, put it in parentheses. *)
      let str1 = match t1 with
        | TyFun (_,_) as t1 -> sprintf "(%s)" (string_of_ty t1)
        | _ as t1 -> string_of_ty t1 in
-     let str2 = string_of_ty t2 in
-     str1 ^ " -> " ^ str2
+     sprintf "%s -> %s" str1 (string_of_ty t2)
   | TyDyn -> "?"
 
 (* TODO: Add Eq *)

@@ -22,8 +22,9 @@ open Syntax.G
 %left PLUS MINUS
 %left MULT DIV
 
-%start toplevel
+%start toplevel (* expr *)
 %type <Syntax.G.exp> toplevel     (* program に変更？ *)
+(* %type <Syntax.G.exp> expr *)
 %%
 
 toplevel :
