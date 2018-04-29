@@ -33,7 +33,7 @@ let ty_binop = function
 
 (* TODO: ty_exp を module G = の中に入れる
  * Add C.ty_exp *)
-(* exp -> ty Environment.t -> ty *)
+(* ty Environment.t -> exp -> ty *)
 let rec ty_exp gamma = function
   | Var x ->
      (try

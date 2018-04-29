@@ -1,11 +1,6 @@
 open Syntax
 open Util
-
-(* Partial import *)
-let ty_binop = Typing.ty_binop
-let are_consistent = Typing.are_consistent
-let matching_fun = Typing.matching_fun
-let join = Typing.join
+open Typing
 
 (* cast-insertion translation *)
 
