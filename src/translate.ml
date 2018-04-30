@@ -16,7 +16,7 @@ let cast_opt f t1 t2 =
 
 (* [G |- e ~> f : T]
  * input: G, e & output: f, T *)
-(* tyenv -> G.exp -> C.exp *)
+(* tyenv -> G.exp -> C.exp * ty *)
 let rec translate_exp gamma = function
   | G.Var x ->
      (try
@@ -63,3 +63,9 @@ let rec translate_exp gamma = function
                t12)
          else err "CI-App: Should not happen"
       | None -> err "CI-App: Not a function")
+  | G.LetRecExp (x, y, t1, t2, e1, e2) ->
+     let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
+     let gamma2 = Environment.add y t1 gamma1 in
+     let f2, t2' = translate_exp gamma2 e1 in
+     if t2' = t2 then translate_exp gamma1 e2
+     else err "CI-LetRec: Should not happen"

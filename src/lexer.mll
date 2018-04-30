@@ -10,8 +10,7 @@ let reservedWords = [
   ("else", P.ELSE);
   ("let", P.LET);               (* let *)
   ("in", P.IN);
-  (* ("and", P.AND);
-   * ("rec", P.REC); *)
+  ("rec", P.REC);
   (* ("match", P.MATCH);           (\* match *\)
    * ("with", P.WITH); *)
   ("int", P.INT);               (* Types *)

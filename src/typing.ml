@@ -32,8 +32,8 @@ let ty_binop = function
   | (LAnd | LOr) -> (TyBool, TyBool, TyBool)
 
 
-(* TODO: ty_exp を module G = の中に入れる
- * Add C.ty_exp *)
+(* TODO: ty_exp を module G = の中に入れた上で，
+ * C.ty_exp を作る *)
 (* ty Environment.t -> exp -> ty *)
 let rec ty_exp gamma = function
   | Var x ->
@@ -78,3 +78,14 @@ let rec ty_exp gamma = function
                        (string_of_ty t2) (string_of_ty t11)
       | None -> err @@ sprintf "GT-App: %s is not a function type"
                          (string_of_ty t1))
+
+  | LetRecExp (x, y, t1, t2, e1, e2) ->
+    let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
+    let gamma2 = Environment.add y t1 gamma1 in
+    let t2' = ty_exp gamma2 e1 in
+    (* consistent か，equality か？ *)
+    if t2' = t2 then ty_exp gamma1 e2
+    (* return type does not match with the given annotation *)
+    else err (sprintf ("GT-LetRec: return type %s does not equal "
+                       ^^ "to the given annotation %s")
+                (string_of_ty t2') (string_of_ty t2))

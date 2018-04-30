@@ -7,7 +7,7 @@ open Syntax.G
 %token PLUS MINUS MULT DIV
 %token LT GT LE GE LAND LOR
 %token IF THEN ELSE TRUE FALSE
-%token LET IN EQ (* AND REC *)
+%token LET IN EQ REC
 %token RARROW FUN
 %token INT BOOL QU              (* Types *)
 %token COLON
@@ -53,9 +53,13 @@ expr :
   (* TODO: Is the parenthesis needed?? in (x:t) *)
   | FUN LPAREN x=ID COLON t=ty RPAREN RARROW e=expr %prec prec_fun
     { FunExp (x, t, e) }
+  (* let rec f (x:S) : T = e in e *)
+  | LET REC x=ID LPAREN y=ID COLON t1=ty RPAREN COLON t2=ty
+    EQ e1=expr IN e2=expr %prec prec_let
+    { LetRecExp (x, y, t1, t2, e1, e2) }
   | e=app_expr { e }
 
-(* conflicts を解消できたが，他の部分との一貫性がない *)
+(* To avoid conflicts *)
 app_expr :
   (* application: Left associative *)
   | e1=app_expr e2=simple_expr { AppExp (e1, e2) }

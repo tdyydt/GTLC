@@ -45,11 +45,14 @@ module G = struct
     | BinOp of binOp * exp * exp
     | IfExp of exp * exp * exp
     | LetExp of id * exp * exp
-    (* 型注釈が必要 *)
-    (* [fun (x:t) -> e] => FunExp (x,t,e) *)
+    (* Type annotation is mandatory at this moment. *)
+    (* FunExp (x,t,e) ==> [fun (x:t) -> e] *)
     | FunExp of id * ty * exp
     | AppExp of exp * exp
-    (* | LetRecExp *)
+    (* LetRec (f,x,t1,t2,e1,e2) ==>
+     * [let rec f (x:t1) : t2 = e1 in e2]
+     * where t2 is return type annotation *)
+    | LetRecExp of id * id * ty * ty * exp * exp
 
     (* TODO: Add decl *)
 end
@@ -65,7 +68,8 @@ module C = struct
     | LetExp of id * exp * exp
     | FunExp of id * ty * exp
     | AppExp of exp * exp
-    (* [f: t1 => t2] => CastExp(f,t1,t2) *)
+    | LetRecExp of id * id * ty * ty * exp * exp
+    (* CastExp(f,t1,t2) ==> [f: t1 => t2]  *)
     | CastExp of exp * ty * ty
 
   (* TODO: reduce parentheses, printer *)
@@ -87,6 +91,10 @@ module C = struct
          (string_of_id x) (string_of_ty t) (string_of_exp f)
     | AppExp (f1, f2) ->
        sprintf "(%s %s)" (string_of_exp f1) (string_of_exp f2)
+    | LetRecExp (x, y, t1, t2, f1, f2) ->
+       sprintf "(let rec %s (%s : %s) : %s = %s in %s)"
+         x y (string_of_ty t1) (string_of_ty t2)
+         (string_of_exp f1) (string_of_exp f2)
     | CastExp (f, t1, t2) ->
        sprintf "(%s : %s => %s)"
          (string_of_exp f) (string_of_ty t1) (string_of_ty t2)

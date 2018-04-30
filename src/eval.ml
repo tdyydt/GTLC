@@ -18,21 +18,23 @@ let string_of_tag = function
 type value =
   | IntV of int
   | BoolV of bool
-  (* function name, body,
+  (* function closure: function name, body,
    * and environment, which contains values of free variables *)
   | FunV of id * exp * value Environment.t
+  (* RecFunV (x,y,e,E) ==> (E)[rec x(y) = e] *)
+  | RecFunV of id * id * exp * value Environment.t
   (* Wrapped function:
-   * [v: (t1 -> t2) => (t3 -> t4)] => Wrapped (v,t1,t2,t3,t4) *)
+   * Wrapped (v,t1,t2,t3,t4) ==> [v: (t1 -> t2) => (t3 -> t4)] *)
   | Wrapped of value * ty * ty * ty * ty
   (* Tagged value, or Injection:
-   * [v: G => ?] => Tagged (tag, v)
-   * where tag corresponds to G(round) *)
+   * Tagged (G, v) ==> [v: G => ?] *)
   | Tagged of tag * value
 
 let rec string_of_value = function
   | IntV n -> string_of_int n
   | BoolV b -> string_of_bool b
-  | FunV (_, _, _) -> "<fun>"
+  | FunV _ -> "<fun>"
+  | RecFunV _ -> "<rec>"        (* or <fun> *)
   | Wrapped (v, t1, t2, t3, t4) ->
      (* How should wrapped functions be displayed? *)
      sprintf "(%s: (%s -> %s) => (%s -> %s))"
@@ -42,9 +44,7 @@ let rec string_of_value = function
      sprintf "(%s: %s => ?)"
        (string_of_value v) (string_of_tag tag)
 
-(* apply_binop || eval_binop *)
 (* evaluate binary operation *)
-(* let apply_prim op v1 v2 *)
 let eval_binop op v1 v2 = match op, v1, v2 with
   | Plus, IntV n1, IntV n2 -> IntV (n1 + n2)
   | Minus, IntV n1, IntV n2 -> IntV (n1 - n2)
@@ -63,6 +63,7 @@ let eval_binop op v1 v2 = match op, v1, v2 with
      err ("Both arguments must be boolean: " ^ (string_of_binop) op)
 
 (* Big-step evaluation *)
+(* value Environment.t -> exp -> value *)
 let rec eval_exp env = function
   | Var x ->
      (try
@@ -89,6 +90,8 @@ let rec eval_exp env = function
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
      eval_app v1 v2
+  | LetRecExp (x, y, _, _, f1, f2) ->
+     eval_exp (Environment.add x (RecFunV (x, y, f1, env)) env) f2
   | CastExp (f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2
 
@@ -146,9 +149,14 @@ and eval_app v1 v2 = match v1 with
   | FunV (x, body, fun_env) ->
      (* [(fun (x:_) -> body) v2] *)
      eval_exp (Environment.add x v2 fun_env) body
+  | RecFunV (x, y, f0, env0) ->
+     let env = (Environment.add y v2 (Environment.add x v1 env0)) in
+     eval_exp env f0
   (* Wrap (AppCast) *)
   | Wrapped (v1', t1, t2, t3, t4) ->
      (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
       * [(v1' (v2: t3 => t1)): t2 => t4] *)
-     eval_cast (eval_app v1' (eval_cast v2 t3 t1)) t2 t4 (* TODO: verify this *)
+     let v2' = eval_cast v2 t3 t1 in
+     let v' = eval_app v1' v2' in eval_cast v' t2 t4
+     (* eval_cast (eval_app v1' (eval_cast v2 t3 t1)) t2 t4 *)
   | _ -> err "eval App: Non-function value is applied"
