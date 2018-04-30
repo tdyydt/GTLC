@@ -24,7 +24,7 @@ let space = [' ' '\t' '\012' '\n']
 
 rule main = parse
 | space+ { main lexbuf }
-| "-"? ['0'-'9']+
+| ['0'-'9']+
     { P.INTV (int_of_string (Lexing.lexeme lexbuf)) }
 
 | "(*" { comment 0 lexbuf }     (* Entering comment mode *)

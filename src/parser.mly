@@ -57,6 +57,11 @@ expr :
   | LET REC x=ID LPAREN y=ID COLON t1=ty RPAREN COLON t2=ty
     EQ e1=expr IN e2=expr %prec prec_let
     { LetRecExp (x, y, t1, t2, e1, e2) }
+  | e=unary_expr { e }
+
+(* `n-1` should be BinOp(Minus, n, 1), not App(n, -1) *)
+unary_expr :
+  | MINUS e=unary_expr { BinOp (Minus, ILit 0, e) }
   | e=app_expr { e }
 
 (* To avoid conflicts *)
