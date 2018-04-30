@@ -63,9 +63,20 @@ let rec translate_exp gamma = function
                t12)
          else err "CI-App: Should not happen"
       | None -> err "CI-App: Not a function")
-  | G.LetRecExp (x, y, t1, t2, e1, e2) ->
-     let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
-     let gamma2 = Environment.add y t1 gamma1 in
-     let f2, t2' = translate_exp gamma2 e1 in
-     if t2' = t2 then translate_exp gamma1 e2
+  (* | G.LetRecExp (x, y, t1, t2, e1, e2) ->
+   *    let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
+   *    let gamma2 = Environment.add y t1 gamma1 in
+   *    let f1, t2' = translate_exp gamma2 e1 in
+   *    if t2' = t2 then
+   *      let f2, t = translate_exp gamma1 e2 in
+   *      (C.LetRecExp (x, y, t1, t2, f1, f2), t)
+   *    else err "CI-LetRec: Should not happen" *)
+
+  | G.LetRecExp (x, y, t11, t12, e1, e2) ->
+     let gamma1 = Environment.add x (TyFun (t11, t12)) gamma in
+     let gamma2 = Environment.add y t11 gamma1 in
+     let f1, t1 = translate_exp gamma2 e1 in
+     if t1 = t12 then
+       let f2, t2 = translate_exp gamma1 e2 in
+       (C.LetRecExp (x, y, t11, t12, f1, f2), t2)
      else err "CI-LetRec: Should not happen"

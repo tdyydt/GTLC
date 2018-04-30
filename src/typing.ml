@@ -22,6 +22,7 @@ let matching_fun = function
 (* join of typs w.r.t consistency *)
 (* もし，join が存在しない場合はエラー？ or optional で返す *)
 let rec join t1 t2 = match (t1, t2) with
+  | t1, t2 when t1 = t2 -> t1
   | _ -> todo "Join"
 
 (* type of binOp *)

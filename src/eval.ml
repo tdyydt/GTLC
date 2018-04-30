@@ -67,9 +67,9 @@ let eval_binop op v1 v2 = match op, v1, v2 with
 let rec eval_exp env = function
   | Var x ->
      (try
-        let t = Environment.find x env in t
+        let v = Environment.find x env in v
       with
-      | Not_found -> err @@ sprintf "%s is not bound" (string_of_id x))
+      | Not_found -> err @@ sprintf "E-Var: %s is not bound" (string_of_id x))
   | ILit n -> IntV n
   | BLit b -> BoolV b
   | BinOp (op, f1, f2) ->
@@ -81,7 +81,7 @@ let rec eval_exp env = function
      (match v1 with
       | BoolV true -> eval_exp env f2
       | BoolV false -> eval_exp env f3
-      | _ -> err "eval If: Test expression must be boolean")
+      | _ -> err "E-If: Test expression must be boolean")
   | LetExp (x, f1, f2) ->
      let v1 = eval_exp env f1 in
      eval_exp (Environment.add x v1 env) f2
