@@ -28,7 +28,8 @@ let rec join t1 t2 = match (t1, t2) with
 (* binOp -> ty * ty * ty *)
 let ty_binop = function
   | (Plus | Minus | Mult | Div) -> (TyInt, TyInt, TyInt)
-  | (Lt | Gt) -> (TyInt, TyInt, TyBool)
+  | (Lt | Gt | Eq | LE | GE) -> (TyInt, TyInt, TyBool)
+  | (LAnd | LOr) -> (TyBool, TyBool, TyBool)
 
 
 (* TODO: ty_exp を module G = の中に入れる

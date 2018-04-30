@@ -42,6 +42,25 @@ let rec string_of_value = function
      sprintf "(%s: %s => ?)"
        (string_of_value v) (string_of_tag tag)
 
+(* apply_binop || eval_binop *)
+(* evaluate binary operation *)
+(* let apply_prim op v1 v2 *)
+let eval_binop op v1 v2 = match op, v1, v2 with
+  | Plus, IntV n1, IntV n2 -> IntV (n1 + n2)
+  | Minus, IntV n1, IntV n2 -> IntV (n1 - n2)
+  | Mult, IntV n1, IntV n2 -> IntV (n1 * n2)
+  | Div, IntV n1, IntV n2 -> IntV (n1 / n2)
+  | Lt, IntV n1, IntV n2 -> BoolV (n1 < n2)
+  | Gt, IntV n1, IntV n2 -> BoolV (n1 > n2)
+  | Eq, IntV n1, IntV n2 -> BoolV (n1 = n2)
+  | LE, IntV n1, IntV n2 -> BoolV (n1 <= n2)
+  | GE, IntV n1, IntV n2 -> BoolV (n1 >= n2)
+  | (Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE), _, _ ->
+     err ("Both arguments must be integer: " ^ (string_of_binop) op)
+  | LAnd, BoolV b1, BoolV b2 -> BoolV (b1 && b2)
+  | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
+  | (LAnd | LOr), _, _ ->
+     err ("Both arguments must be boolean: " ^ (string_of_binop) op)
 
 (* Big-step evaluation *)
 let rec eval_exp env = function
@@ -55,17 +74,7 @@ let rec eval_exp env = function
   | BinOp (op, f1, f2) ->
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
-     (* TODO: apply_prim op v1 v2 *)
-     (match op, v1, v2 with
-      | Plus, IntV n1, IntV n2 -> IntV (n1 + n2)
-      | Minus, IntV n1, IntV n2 -> IntV (n1 - n2)
-      | Mult, IntV n1, IntV n2 -> IntV (n1 * n2)
-      | Div, IntV n1, IntV n2 -> IntV (n1 / n2)
-      | Lt, IntV n1, IntV n2 -> BoolV (n1 < n2)
-      | Gt, IntV n1, IntV n2 -> BoolV (n1 > n2)
-      (* op when op is arithmetic *)
-      (* | (Plus | Minus | Mult | Div | Lt | Gt), _, _ ->  *)
-      | op, _, _ -> err "eval BinOp")
+     eval_binop op v1 v2
   | IfExp (f1, f2, f3) ->
      let v1 = eval_exp env f1 in
      (match v1 with

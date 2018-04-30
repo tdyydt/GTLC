@@ -5,7 +5,7 @@ open Syntax.G
 
 %token LPAREN RPAREN SEMISEMI
 %token PLUS MINUS MULT DIV
-%token LT GT
+%token LT GT LE GE LAND LOR
 %token IF THEN ELSE TRUE FALSE
 %token LET IN EQ (* AND REC *)
 %token RARROW FUN
@@ -16,9 +16,12 @@ open Syntax.G
 %token <Syntax.id> ID
 
 (* precedence: lower to higher *)
+(* via: https://caml.inria.fr/pub/docs/manual-ocaml/expr.html *)
 %right prec_let prec_fun
 %right prec_if
-%left LT GT (* EQ, いまEQは，2項演算ではない *)
+%right LOR
+%right LAND
+%left LT GT EQ LE GE
 %left PLUS MINUS
 %left MULT DIV
 
@@ -37,6 +40,11 @@ expr :
   | e1=expr DIV e2=expr { BinOp (Div, e1, e2) }
   | e1=expr LT e2=expr { BinOp (Lt, e1, e2) } (* relational *)
   | e1=expr GT e2=expr { BinOp (Gt, e1, e2) }
+  | e1=expr EQ e2=expr { BinOp (Eq, e1, e2) }
+  | e1=expr LE e2=expr { BinOp (LE, e1, e2) }
+  | e1=expr GE e2=expr { BinOp (GE, e1, e2) }
+  | e1=expr LAND e2=expr { BinOp (LAnd, e1, e2) } (* logical *)
+  | e1=expr LOR e2=expr { BinOp (LOr, e1, e2) }
 
   | IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
     { IfExp (e1, e2, e3) }

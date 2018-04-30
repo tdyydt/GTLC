@@ -36,11 +36,13 @@ rule main = parse
 | "-" { P.MINUS }
 | "*" { P.MULT }
 | "/" { P.DIV }
-| "<" { P.LT }                  (* relation *)
+| "&&" { P.LAND }               (* logical *)
+| "||" { P.LOR }
+| "<" { P.LT }                  (* relational *)
 | ">" { P.GT }
-(* | "<=" { P.LE }
- * | ">=" { P.GE } *)
-| "=" { P.EQ }
+| "<=" { P.LE }
+| ">=" { P.GE }
+| "=" { P.EQ }                  (* let, relational *)
 | "->" { P.RARROW }
 | "?" { P.QU }                  (* the unknown type *)
 | ":" { P.COLON }               (* type annot *)

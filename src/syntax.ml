@@ -21,17 +21,20 @@ let rec string_of_ty = function
      sprintf "%s -> %s" str1 (string_of_ty t2)
   | TyDyn -> "?"
 
-(* TODO: Add Eq *)
-type binOp = Plus | Minus | Mult | Div | Lt | Gt (* | LAnd | LOr *)
+type binOp = Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE | LAnd | LOr
 
 let string_of_binop = function
-  | Plus -> "+"
+  | Plus  -> "+"
   | Minus -> "-"
-  | Mult -> "*"
-  | Div -> "/"
-  | Lt -> "<"
-  | Gt -> ">"
-
+  | Mult  -> "*"
+  | Div   -> "/"
+  | Lt    -> "<"
+  | Gt    -> ">"
+  | Eq    -> "="
+  | LE    -> "<="
+  | GE    -> ">="
+  | LAnd  -> "&&"
+  | LOr   -> "||"
 
 (* Gradually typed surface language *)
 module G = struct
