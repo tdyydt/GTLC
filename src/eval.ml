@@ -69,7 +69,7 @@ let rec eval_exp env = function
      (try
         let v = Environment.find x env in v
       with
-      | Not_found -> err @@ sprintf "E-Var: %s is not bound" (string_of_id x))
+      | Not_found -> err @@ sprintf "E-Var: %s is not bound" x)
   | ILit n -> IntV n
   | BLit b -> BoolV b
   | BinOp (op, f1, f2) ->

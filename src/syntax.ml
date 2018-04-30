@@ -2,7 +2,6 @@ open Util
 open Printf
 
 type id = string
-let string_of_id x = x          (* Should be used *)
 
 type ty =
   | TyInt
@@ -54,7 +53,30 @@ module G = struct
      * where t2 is return type annotation *)
     | LetRecExp of id * id * ty * ty * exp * exp
 
-    (* TODO: Add decl *)
+  (* TODO: Add decl *)
+
+  let rec string_of_exp = function
+    | Var x -> x
+    | ILit n -> string_of_int n
+    | BLit b -> string_of_bool b
+    | BinOp (op, e1, e2) ->
+       sprintf "(%s %s %s)"
+         (string_of_exp e1) (string_of_binop op) (string_of_exp e2)
+    | IfExp (e1, e2, e3) ->
+       sprintf "(if %s then %s else %s)"
+         (string_of_exp e1) (string_of_exp e2) (string_of_exp e3)
+    | LetExp (x, e1, e2) ->
+       sprintf "(let %s = %s in %s)"
+         x (string_of_exp e1) (string_of_exp e2)
+    | FunExp (x, t, f) ->
+       sprintf "(fun (%s : %s) -> %s)"
+         x (string_of_ty t) (string_of_exp f)
+    | AppExp (e1, e2) ->
+       sprintf "(%s %s)" (string_of_exp e1) (string_of_exp e2)
+    | LetRecExp (x, y, t1, t2, e1, e2) ->
+       sprintf "(let rec %s (%s : %s) : %s = %s in %s)"
+         x y (string_of_ty t1) (string_of_ty t2)
+         (string_of_exp e1) (string_of_exp e2)
 end
 
 (* Cast Calculus *)
@@ -74,7 +96,7 @@ module C = struct
 
   (* TODO: reduce parentheses, printer *)
   let rec string_of_exp = function
-    | Var x -> string_of_id x
+    | Var x -> x
     | ILit n -> string_of_int n
     | BLit b -> string_of_bool b
     | BinOp (op, f1, f2) ->
@@ -85,10 +107,10 @@ module C = struct
          (string_of_exp f1) (string_of_exp f2) (string_of_exp f3)
     | LetExp (x, f1, f2) ->
        sprintf "(let %s = %s in %s)"
-         (string_of_id x) (string_of_exp f1) (string_of_exp f2)
+         x (string_of_exp f1) (string_of_exp f2)
     | FunExp (x, t, f) ->
        sprintf "(fun (%s : %s) -> %s)"
-         (string_of_id x) (string_of_ty t) (string_of_exp f)
+         x (string_of_ty t) (string_of_exp f)
     | AppExp (f1, f2) ->
        sprintf "(%s %s)" (string_of_exp f1) (string_of_exp f2)
     | LetRecExp (x, y, t1, t2, f1, f2) ->

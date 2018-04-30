@@ -41,7 +41,7 @@ let rec ty_exp gamma = function
      (try
         let t = Environment.find x gamma in t
       with
-      | Not_found -> err @@ sprintf "GT-Var: %s is not bound" (string_of_id x))
+      | Not_found -> err @@ sprintf "GT-Var: %s is not bound" x)
   | ILit _ -> TyInt
   | BLit _ -> TyBool
   | BinOp (op, e1, e2) ->
