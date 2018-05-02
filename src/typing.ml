@@ -90,3 +90,26 @@ let rec ty_exp gamma = function
     else err (sprintf ("GT-LetRec: return type %s does not equal "
                        ^^ "to the given annotation %s")
                 (string_of_ty t2') (string_of_ty t2))
+
+(* tyenv -> program -> tyenv * id * ty *)
+let ty_prog gamma = function
+  | Exp e ->
+     let t = ty_exp gamma e in (gamma, "-", t)
+  | LetDecl (x, e) ->
+     (* exp に帰着させている *)
+     (* let x = e in x *)
+     (* let t = ty_exp gamma (LetExp (x, e, Var x)) in
+      * (Environment.add x t gamma, x, t) *)
+
+     let t = ty_exp gamma e in
+     (Environment.add x t gamma, x, t)
+  | LetRecDecl (x, y, t1, t2, e) ->
+     (* let rec x (y:t1) : t2 = e in x *)
+     let t = ty_exp gamma (LetRecExp (x, y, t1, t2, e, Var x)) in
+     (Environment.add x t gamma, x, t)
+
+     (* let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
+      * let gamma2 = Environment.add y t2 gamma1 in
+      * let t2' = ty_exp gamma2 e in
+      * if t2' = t2 then (gamma1, x, (TyFun (t1, t2)))
+      * else err "GT-LetRecDecl" *)

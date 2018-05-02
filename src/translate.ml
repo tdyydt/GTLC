@@ -72,11 +72,42 @@ let rec translate_exp gamma = function
    *      (C.LetRecExp (x, y, t1, t2, f1, f2), t)
    *    else err "CI-LetRec: Should not happen" *)
 
-  | G.LetRecExp (x, y, t11, t12, e1, e2) ->
-     let gamma1 = Environment.add x (TyFun (t11, t12)) gamma in
-     let gamma2 = Environment.add y t11 gamma1 in
-     let f1, t1 = translate_exp gamma2 e1 in
-     if t1 = t12 then
+  (* | G.LetRecExp (x, y, t11, t12, e1, e2) ->
+   *    let gamma1 = Environment.add x (TyFun (t11, t12)) gamma in
+   *    let gamma2 = Environment.add y t11 gamma1 in
+   *    let f1, t1 = translate_exp gamma2 e1 in
+   *    if t1 = t12 then
+   *      let f2, t2 = translate_exp gamma1 e2 in
+   *      (C.LetRecExp (x, y, t11, t12, f1, f2), t2)
+   *    else err "CI-LetRec: Should not happen" *)
+
+  (* paraty = parameter type, retty = return type *)
+  | G.LetRecExp (x, y, paraty, retty, e1, e2) ->
+     let gamma1 = Environment.add x (TyFun (paraty, retty)) gamma in
+     let gamma2 = Environment.add y paraty gamma1 in
+     let f1, retty' = translate_exp gamma2 e1 in
+     if retty' = retty then
        let f2, t2 = translate_exp gamma1 e2 in
-       (C.LetRecExp (x, y, t11, t12, f1, f2), t2)
+       (C.LetRecExp (x, y, paraty, retty, f1, f2), t2)
      else err "CI-LetRec: Should not happen"
+
+(* 型を返す必要性が，あまり感じられない
+ * ただ，宣言の型とは，宣言した変数に付いた型だと思える *)
+(* tyenv -> G.program -> C.program * ty *)
+let translate_prog gamma = function
+  | G.Exp e ->
+     let f, t = translate_exp gamma e in (C.Exp f, t)
+  | G.LetDecl (x, e) ->
+     let f, t = translate_exp gamma e in (C.LetDecl (x, f), t)
+  (* | G.LetRecDecl (x, y, t1, t2, e) ->
+   *    let f, t = translate_exp gamma e in
+   *    (C.LetRecDecl (x, y, t1, t2, f), t) *)
+
+  | G.LetRecDecl (x, y, paraty, retty, e) ->
+     (* let tyfun = TyFun (paraty, retty) in *)
+     let gamma1 = Environment.add x (TyFun (paraty, retty)) gamma in
+     let gamma2 = Environment.add y paraty gamma1 in
+     let f, retty' = translate_exp gamma2 e in
+     if retty' = retty then
+       (C.LetRecDecl (x, y, paraty, retty, f), TyFun (paraty, retty))
+     else err "CI-LetRecDecl: Should not happen"

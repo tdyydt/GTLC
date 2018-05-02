@@ -3,33 +3,42 @@ open Syntax
 open Typing
 open Translate
 open Eval
+open Util
 
 (* TODO: debug = true の時のみ，途中経過を出力 *)
-let read_ty_print () =
+let rec read_eval_print gamma env =
   print_string "# ";
   flush stdout;
   try
-    let e = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
-    let gamma = Environment.empty in
-    let t = ty_exp gamma e in
+    (* p has type G.program *)
+    let p = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
     print_string "[Typing]\n";
-    printf "val - : %s" (string_of_ty t);
+    let (gamma', x, t) = ty_prog gamma p in
+    printf "val %s : %s" x (string_of_ty t);
     print_newline ();
-    (* CI *)
-    let f, t' = translate_exp gamma e in
+    (* Cast Insertion Translation *)
     print_string "[Translation]\n";
-    print_string (C.string_of_exp f);
+    (* q has type C.program *)
+    let q, t' = translate_prog gamma p in
+    print_string (C.string_of_program q);
     print_newline ();
     (* check soundness *)
     print_string (string_of_bool (t = t'));
     print_newline ();
     (* Eval *)
-    let env = Environment.empty in
     print_string "[Evaluation]\n";
-    let v = eval_exp env f in
-    printf "val - : %s = %s" (string_of_ty t) (string_of_value v);
-    print_newline ()
+    let (env', x', v) = eval_prog env q in
+    assert (x' = x);
+    printf "val %s : %s = %s" x (string_of_ty t) (string_of_value v);
+    print_newline ();
+    read_eval_print gamma' env'
   with
+  | Error s -> print_string s;
+               print_newline ();
+               read_eval_print gamma env
   | e -> raise e
 
-let _ = read_ty_print ()
+let initial_gamma = Environment.empty
+let initial_env = Environment.empty
+
+let _ = read_eval_print initial_gamma initial_env

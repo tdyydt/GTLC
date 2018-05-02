@@ -25,13 +25,18 @@ open Syntax.G
 %left PLUS MINUS
 %left MULT DIV
 
-%start toplevel (* expr *)
-%type <Syntax.G.exp> toplevel     (* program に変更？ *)
-(* %type <Syntax.G.exp> expr *)
+%start toplevel
+%type <Syntax.G.program> toplevel
 %%
 
 toplevel :
-  | e=expr SEMISEMI { e }
+  | p=program SEMISEMI { p }
+
+program :
+  | e=expr { Exp e }
+  | LET x=ID EQ e=expr { LetDecl (x, e) }
+  | LET REC x=ID LPAREN y=ID COLON t1=ty RPAREN COLON t2=ty EQ e=expr
+    { LetRecDecl (x, y, t1, t2, e) }
 
 expr :
   | e1=expr PLUS e2=expr { BinOp (Plus, e1, e2) } (* arith *)

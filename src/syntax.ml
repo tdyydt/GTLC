@@ -53,8 +53,6 @@ module G = struct
      * where t2 is return type annotation *)
     | LetRecExp of id * id * ty * ty * exp * exp
 
-  (* TODO: Add decl *)
-
   let rec string_of_exp = function
     | Var x -> x
     | ILit n -> string_of_int n
@@ -77,6 +75,13 @@ module G = struct
        sprintf "(let rec %s (%s : %s) : %s = %s in %s)"
          x y (string_of_ty t1) (string_of_ty t2)
          (string_of_exp e1) (string_of_exp e2)
+
+  type program =
+    | Exp of exp
+    (* LetDecl(x,e) ==> [let x = e] *)
+    | LetDecl of id * exp
+    (* LetRecDecl(x,y,t1,t2,e) ==> [let rec x (y:t1) : t2 = e] *)
+    | LetRecDecl of id * id * ty * ty * exp
 end
 
 (* Cast Calculus *)
@@ -120,4 +125,17 @@ module C = struct
     | CastExp (f, t1, t2) ->
        sprintf "(%s : %s => %s)"
          (string_of_exp f) (string_of_ty t1) (string_of_ty t2)
+
+  type program =
+    | Exp of exp
+    | LetDecl of id * exp
+    | LetRecDecl of id * id * ty * ty * exp
+
+  let rec string_of_program = function
+    | Exp f -> string_of_exp f
+    | LetDecl (x, f) ->
+       sprintf "let %s = %s" x (string_of_exp f)
+    | LetRecDecl (x, y, t1, t2, f) ->
+       sprintf "let rec %s (%s : %s) : %s = %s"
+         x y (string_of_ty t1) (string_of_ty t2) (string_of_exp f)
 end

@@ -56,11 +56,11 @@ let eval_binop op v1 v2 = match op, v1, v2 with
   | LE, IntV n1, IntV n2 -> BoolV (n1 <= n2)
   | GE, IntV n1, IntV n2 -> BoolV (n1 >= n2)
   | (Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE), _, _ ->
-     err ("Both arguments must be integer: " ^ (string_of_binop) op)
+     err ("Both arguments must be integer: " ^ string_of_binop op)
   | LAnd, BoolV b1, BoolV b2 -> BoolV (b1 && b2)
   | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
   | (LAnd | LOr), _, _ ->
-     err ("Both arguments must be boolean: " ^ (string_of_binop) op)
+     err ("Both arguments must be boolean: " ^ string_of_binop op)
 
 (* Big-step evaluation *)
 (* value Environment.t -> exp -> value *)
@@ -160,3 +160,16 @@ and eval_app v1 v2 = match v1 with
      let v' = eval_app v1' v2' in eval_cast v' t2 t4
      (* eval_cast (eval_app v1' (eval_cast v2 t3 t1)) t2 t4 *)
   | _ -> err "eval App: Non-function value is applied"
+
+
+(* value Environment.t -> program -> value *)
+let eval_prog env = function
+  | Exp f -> (env, "-", eval_exp env f)
+  | LetDecl (x, f) ->
+     let v = eval_exp env f in
+     (Environment.add x v env, x, v)
+  | LetRecDecl (x, y, t1, t2, f) ->
+     (* 暫定: exp に帰着させる *)
+     (* let rec x (y:t1) : t2 = e in x *)
+     let v = eval_exp env (LetRecExp (x, y, t1, t2, f, Var x)) in
+     (Environment.add x v env, x, v)
