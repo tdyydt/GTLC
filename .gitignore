@@ -1,6 +1,15 @@
 *.cm[iox]
 *.cma
+.depend
+lexer.ml
+parser.ml
+parser.mli
+parser.output
+parser.automaton
+parser.conflicts
 
+# binary
+gtlc
 # OUnit
 *.log
 *.cache
