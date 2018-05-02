@@ -12,20 +12,23 @@ let read_ty_print () =
     let e = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
     let gamma = Environment.empty in
     let t = ty_exp gamma e in
-    printf "val %s : %s" "-" (string_of_ty t);
+    print_string "[Typing]\n";
+    printf "val - : %s" (string_of_ty t);
     print_newline ();
     (* CI *)
     let f, t' = translate_exp gamma e in
-    print_string @@ C.string_of_exp f;
+    print_string "[Translation]\n";
+    print_string (C.string_of_exp f);
     print_newline ();
-    (* TODO: assert t = t' *)
-    print_string @@ string_of_bool (t = t');
+    (* check soundness *)
+    print_string (string_of_bool (t = t'));
     print_newline ();
     (* Eval *)
     let env = Environment.empty in
+    print_string "[Evaluation]\n";
     let v = eval_exp env f in
-    printf "val %s : %s = %s" "-" (string_of_ty t) (string_of_value v);
-    print_newline ();
+    printf "val - : %s = %s" (string_of_ty t) (string_of_value v);
+    print_newline ()
   with
   | e -> raise e
 
