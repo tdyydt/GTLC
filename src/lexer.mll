@@ -51,7 +51,7 @@ rule main = parse
       try
         List.assoc id reservedWords
       with
-      _ -> Parser.ID id
+      _ -> P.ID id
      }
 
 and comment level = parse

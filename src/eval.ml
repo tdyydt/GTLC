@@ -12,7 +12,7 @@ type tag =
 let string_of_tag = function
   | I -> "int"
   | B -> "bool"
-  | F -> "(? -> ?)"
+  | F -> "? -> ?"
 
 (* exval, dnval *)
 type value =
