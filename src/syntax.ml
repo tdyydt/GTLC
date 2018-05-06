@@ -7,7 +7,7 @@ type ty =
   | TyInt
   | TyBool
   | TyFun of ty * ty
-  | TyDyn                       (* the dynamic type ? *)
+  | TyDyn                       (* the dynamic/unknown type *)
 
 let with_paren flag s =
   if flag then "(" ^ s ^ ")" else s
@@ -18,15 +18,14 @@ let prec_ty = function
   | (TyInt | TyBool | TyDyn) -> 2
   | TyFun _ -> 1
 
-(* t1 > t2 : t1 associates stronger than t2 *)
-let gt_ty t1 t2 = (prec_ty t1) > (prec_ty t2)
+let ge_ty t1 t2 = (prec_ty t1) >= (prec_ty t2)
 
 let rec string_of_ty = function
   | TyInt -> "int"
   | TyBool -> "bool"
   | TyFun (t1,t2) as t ->
      sprintf "%s -> %s"
-       (with_paren (gt_ty t t1) (string_of_ty t1)) (string_of_ty t2)
+       (with_paren (ge_ty t t1) (string_of_ty t1)) (string_of_ty t2)
   | TyDyn -> "?"
 
 type binOp = Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE | LAnd | LOr
@@ -136,9 +135,10 @@ module C = struct
        sprintf "fun (%s : %s) -> %s"
          x (string_of_ty t) (string_of_exp f1)
     | AppExp (f1, f2) as f ->
+       (* Left assoc *)
        sprintf "%s %s"
-         (with_paren (ge_exp f f1) (string_of_exp f1))
-         (with_paren (gt_exp f f2) (string_of_exp f2))
+         (with_paren (gt_exp f f1) (string_of_exp f1))
+         (with_paren (ge_exp f f2) (string_of_exp f2))
     | LetRecExp (x, y, t1, t2, f1, f2) as f ->
        sprintf "let rec %s (%s : %s) : %s = %s in %s"
          x y (string_of_ty t1) (string_of_ty t2)
