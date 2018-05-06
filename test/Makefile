@@ -1,4 +1,4 @@
 # -I is mandatory?
 # If not: Unbound module Syntax
-test: ../src/lib.cma test_typing.ml
+test: ../src/lib.cma test_typing.ml test_pp.ml test_all.ml
 	ocamlfind ocamlc -I ../src -o test -package oUnit -linkpkg -g $^
