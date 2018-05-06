@@ -1,6 +1,7 @@
 %{
 open Syntax
 open Syntax.G
+open Printf
 %}
 
 %token LPAREN RPAREN SEMISEMI
@@ -32,11 +33,41 @@ open Syntax.G
 toplevel :
   | p=program SEMISEMI { p }
 
+(* parameter *)
+para :
+  | LPAREN x=ID COLON t=ty RPAREN { (x,t) }
+  | x=ID { Util.err (sprintf "Type annotation for %s is mandatory." x) }
+
+let_binding :
+  | LET x=ID paras=list(para) EQ e=expr
+    { (* let f (x:t1) (y:t2) = e
+       * ==> let f = fun (x:t1) -> fun (x:t2) -> e *)
+      let e' = List.fold_right
+                 (* acc for accumulator *)
+                 (fun (x,t) e_acc -> FunExp (x, t, e_acc))
+                 paras e
+      in (x, e') }
+
+rec_binding :
+  (* 最初の para は特別扱い *)
+  (* let rec x (y:t1) [paras] : t2 = ... *)
+  | LET REC funid=ID para=para paras=list(para) COLON retty=ty EQ e0=expr
+    { let paraid, paraty = para in
+      let e' = List.fold_right
+                 (fun (x,t) e_acc -> FunExp (x, t, e_acc))
+                 paras e0
+      in (funid, paraid, paraty, retty, e') }
+
+  (* Not necessary *)
+  | LET REC funid=ID para list(para) EQ e0=expr
+    { Util.err (sprintf "Return type annotation for %s is mandatory." funid) }
+
 program :
   | e=expr { Exp e }
-  | LET x=ID EQ e=expr { LetDecl (x, e) }
-  | LET REC x=ID LPAREN y=ID COLON t1=ty RPAREN COLON t2=ty EQ e=expr
-    { LetRecDecl (x, y, t1, t2, e) }
+  | p=let_binding { let x, e = p in LetDecl (x,e) }
+  (* tup for tuple *)
+  | tup=rec_binding { let (x, y, t1, t2, e) = tup in
+                      LetRecDecl (x, y, t1, t2, e) }
 
 expr :
   | e1=expr PLUS e2=expr { BinOp (Plus, e1, e2) } (* arith *)
@@ -53,15 +84,19 @@ expr :
 
   | IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
     { IfExp (e1, e2, e3) }
-  | LET x=ID EQ e1=expr IN e2=expr %prec prec_let
-    { LetExp (x, e1, e2) }
-  (* TODO: Is the parenthesis needed?? in (x:t) *)
-  | FUN LPAREN x=ID COLON t=ty RPAREN RARROW e=expr %prec prec_fun
-    { FunExp (x, t, e) }
+  | p=let_binding IN e2=expr %prec prec_let
+    { let x, e1 = p in LetExp (x, e1, e2) }
+
+  (* paras must not be empty *)
+  | FUN paras=nonempty_list(para) RARROW e0=expr %prec prec_fun
+    { List.fold_right
+        (fun (x,t) e_acc -> FunExp (x, t, e_acc))
+        paras e0 }
+
   (* let rec f (x:S) : T = e in e *)
-  | LET REC x=ID LPAREN y=ID COLON t1=ty RPAREN COLON t2=ty
-    EQ e1=expr IN e2=expr %prec prec_let
-    { LetRecExp (x, y, t1, t2, e1, e2) }
+  | tup=rec_binding IN e2=expr %prec prec_let
+    { let (x, y, t1, t2, e1) = tup in
+      LetRecExp (x, y, t1, t2, e1, e2) }
   | e=unary_expr { e }
 
 (* `n-1` should be BinOp(Minus, n, 1), not App(n, -1) *)
