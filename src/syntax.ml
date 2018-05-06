@@ -75,6 +75,62 @@ module G = struct
     | LetDecl of id * exp
     (* LetRecDecl(x,y,t1,t2,e) ==> [let rec x (y:t1) : t2 = e] *)
     | LetRecDecl of id * id * ty * ty * exp
+
+  (* stringify ***********)
+  (* precedence of expression *)
+  let prec_exp = function
+    | LetExp _ | LetRecExp _ | FunExp _ -> 10
+    | IfExp _ -> 20
+    | BinOp (op, _, _) -> 30 + prec_binop op
+    | AppExp _ -> 40
+    | Var _ | ILit _ | BLit _ -> 50
+
+  (* e1 > e2 : e1 associates stronger than e2 *)
+  let gt_exp e1 e2 = (prec_exp e1) > (prec_exp e2)
+  (* e1 >= e2 *)
+  let ge_exp e1 e2 = (prec_exp e1) >= (prec_exp e2)
+
+  let rec string_of_exp = function
+    | Var x -> x
+    | ILit n -> string_of_int n
+    | BLit b -> string_of_bool b
+    | BinOp (op, e1, e2) as e ->
+       (* Left assoc *)
+       sprintf "%s %s %s"
+         (with_paren (gt_exp e e1) (string_of_exp e1)) (string_of_binop op)
+         (with_paren (ge_exp e e2) (string_of_exp e2))
+    | IfExp (e1, e2, e3) as e ->
+       (* e1,e2 は If 等ならカッコが要る *)
+       (* e3 にカッコは不要 *)
+       sprintf "if %s then %s else %s"
+         (with_paren (ge_exp e e1) (string_of_exp e1))
+         (with_paren (ge_exp e e2) (string_of_exp e2))
+         (string_of_exp e3)
+    | LetExp (x, e1, e2) as e ->
+       sprintf "let %s = %s in %s"
+         x (with_paren (ge_exp e e1) (string_of_exp e1))
+         (string_of_exp e2)
+    | FunExp (x, t, e1) ->
+       sprintf "fun (%s : %s) -> %s"
+         x (string_of_ty t) (string_of_exp e1)
+    | AppExp (e1, e2) as e ->
+       (* Left assoc *)
+       sprintf "%s %s"
+         (with_paren (gt_exp e e1) (string_of_exp e1))
+         (with_paren (ge_exp e e2) (string_of_exp e2))
+    | LetRecExp (x, y, t1, t2, e1, e2) as e ->
+       sprintf "let rec %s (%s : %s) : %s = %s in %s"
+         x y (string_of_ty t1) (string_of_ty t2)
+         (with_paren (ge_exp e e1) (string_of_exp e1))
+         (string_of_exp e2)
+
+  let rec string_of_program = function
+    | Exp e -> string_of_exp e
+    | LetDecl (x, e) ->
+       sprintf "let %s = %s" x (string_of_exp e)
+    | LetRecDecl (x, y, t1, t2, e) ->
+       sprintf "let rec %s (%s : %s) : %s = %s"
+         x y (string_of_ty t1) (string_of_ty t2) (string_of_exp e)
 end
 
 (* Cast Calculus *)
@@ -97,6 +153,7 @@ module C = struct
     | LetDecl of id * exp
     | LetRecDecl of id * id * ty * ty * exp
 
+  (* stringify ***********)
   (* precedence of expression *)
   let prec_exp = function
     | LetExp _ | LetRecExp _ | FunExp _ -> 10
