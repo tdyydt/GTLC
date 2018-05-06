@@ -38,8 +38,9 @@ para :
   | LPAREN x=ID COLON t=ty RPAREN { (x,t) }
   | x=ID { Util.err (sprintf "Type annotation for %s is mandatory." x) }
 
+(* let x = e *)
 let_binding :
-  | LET x=ID paras=list(para) EQ e=expr
+  | LET x=ID paras=para* EQ e=expr
     { (* let f (x:t1) (y:t2) = e
        * ==> let f = fun (x:t1) -> fun (x:t2) -> e *)
       let e' = List.fold_right
@@ -48,10 +49,11 @@ let_binding :
                  paras e
       in (x, e') }
 
+(* let rec f (x:S) : T = e *)
 rec_binding :
   (* 最初の para は特別扱い *)
   (* let rec x (y:t1) [paras] : t2 = ... *)
-  | LET REC funid=ID para=para paras=list(para) COLON retty=ty EQ e0=expr
+  | LET REC funid=ID para=para paras=para* COLON retty=ty EQ e0=expr
     { let paraid, paraty = para in
       let e' = List.fold_right
                  (fun (x,t) e_acc -> FunExp (x, t, e_acc))
@@ -59,7 +61,7 @@ rec_binding :
       in (funid, paraid, paraty, retty, e') }
 
   (* Not necessary *)
-  | LET REC funid=ID para list(para) EQ e0=expr
+  | LET REC funid=ID para para* EQ e0=expr
     { Util.err (sprintf "Return type annotation for %s is mandatory." funid) }
 
 program :
@@ -70,17 +72,7 @@ program :
                       LetRecDecl (x, y, t1, t2, e) }
 
 expr :
-  | e1=expr PLUS e2=expr { BinOp (Plus, e1, e2) } (* arith *)
-  | e1=expr MINUS e2=expr { BinOp (Minus, e1, e2) }
-  | e1=expr MULT e2=expr { BinOp (Mult, e1, e2) }
-  | e1=expr DIV e2=expr { BinOp (Div, e1, e2) }
-  | e1=expr LT e2=expr { BinOp (Lt, e1, e2) } (* relational *)
-  | e1=expr GT e2=expr { BinOp (Gt, e1, e2) }
-  | e1=expr EQ e2=expr { BinOp (Eq, e1, e2) }
-  | e1=expr LE e2=expr { BinOp (LE, e1, e2) }
-  | e1=expr GE e2=expr { BinOp (GE, e1, e2) }
-  | e1=expr LAND e2=expr { BinOp (LAnd, e1, e2) } (* logical *)
-  | e1=expr LOR e2=expr { BinOp (LOr, e1, e2) }
+  | e1=expr op=binop e2=expr { BinOp (op, e1, e2) }
 
   | IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
     { IfExp (e1, e2, e3) }
@@ -88,16 +80,29 @@ expr :
     { let x, e1 = p in LetExp (x, e1, e2) }
 
   (* paras must not be empty *)
-  | FUN paras=nonempty_list(para) RARROW e0=expr %prec prec_fun
+  | FUN paras=para+ RARROW e0=expr %prec prec_fun
     { List.fold_right
         (fun (x,t) e_acc -> FunExp (x, t, e_acc))
         paras e0 }
 
-  (* let rec f (x:S) : T = e in e *)
   | tup=rec_binding IN e2=expr %prec prec_let
     { let (x, y, t1, t2, e1) = tup in
       LetRecExp (x, y, t1, t2, e1, e2) }
   | e=unary_expr { e }
+
+(* %inline is necessary; see Sec 5.3 of manual *)
+%inline binop :
+  | PLUS { Plus }               (* arith *)
+  | MINUS { Minus }
+  | MULT { Mult }
+  | DIV { Div }
+  | LT { Lt }                   (* relational *)
+  | GT { Gt }
+  | EQ { Eq }
+  | LE { LE }
+  | GE { GE }
+  | LAND { LAnd }               (* logical *)
+  | LOR { LOr }
 
 (* `n-1` should be BinOp(Minus, n, 1), not App(n, -1) *)
 unary_expr :

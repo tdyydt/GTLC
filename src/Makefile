@@ -2,7 +2,7 @@ OCAMLC=ocamlc
 OCAMLDEP=ocamldep
 OCAMLLEX=ocamllex
 MENHIR=menhir
-MENHIROPTIONS=--explain
+MENHIROPTIONS=--explain --infer
 
 PROGNAME=gtlc
 
