@@ -39,11 +39,14 @@ let rec translate_exp gamma = function
      if are_consistent t1 TyBool then
        let f2, t2 = translate_exp gamma e2 in
        let f3, t3 = translate_exp gamma e3 in
-       let u = join t2 t3 in
-       (C.IfExp (cast_opt f1 t1 TyBool,
-                 cast_opt f2 t2 u,
-                 cast_opt f3 t3 u),
-        u)
+       (* OR:
+        * let u = meet t2 t3 in
+        * (C.IfExp (cast_opt f1 t1 TyBool,
+        *           cast_opt f2 t2 u,
+        *           cast_opt f3 t3 u), u) *)
+       if t2 = t3 then
+         (C.IfExp (cast_opt f1 t1 TyBool, f2, f3), t2)
+       else err "CI-If-branches: Should not happen"
      else err "CI-If-test: Should not happen"
   | G.LetExp (x, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
@@ -91,8 +94,7 @@ let rec translate_exp gamma = function
        (C.LetRecExp (x, y, paraty, retty, f1, f2), t2)
      else err "CI-LetRec: Should not happen"
 
-(* 型を返す必要性が，あまり感じられない
- * ただ，宣言の型とは，宣言した変数に付いた型だと思える *)
+(* 型を返す必要性が無い？ *)
 (* tyenv -> G.program -> C.program * ty *)
 let translate_prog gamma = function
   | G.Exp e ->
