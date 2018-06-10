@@ -3,6 +3,7 @@ open Util
 open Typing
 
 (* cast-insertion translation *)
+(* cast-insertion should not result in error *)
 
 (* insert cast if needed *)
 (* C.exp -> ty -> ty -> C.exp *)
@@ -10,12 +11,7 @@ let cast_opt f t1 t2 =
   if t1 = t2 then f
   else C.CastExp (f,t1,t2)
 
-(* cast-insertion should not result in error *)
-(* G.ty_exp を通過しているため，キャスト挿入でエラーが起きることは
- * ないはず．もしあれば，実装のバグ *)
-
-(* [G |- e ~> f : T]
- * input: G, e & output: f, T *)
+(* cast insertion [G |- e ~> f : T] *)
 (* tyenv -> G.exp -> C.exp * ty *)
 let rec translate_exp gamma = function
   | G.Var x ->
@@ -66,23 +62,6 @@ let rec translate_exp gamma = function
                t12)
          else err "CI-App: Should not happen"
       | None -> err "CI-App: Not a function")
-  (* | G.LetRecExp (x, y, t1, t2, e1, e2) ->
-   *    let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
-   *    let gamma2 = Environment.add y t1 gamma1 in
-   *    let f1, t2' = translate_exp gamma2 e1 in
-   *    if t2' = t2 then
-   *      let f2, t = translate_exp gamma1 e2 in
-   *      (C.LetRecExp (x, y, t1, t2, f1, f2), t)
-   *    else err "CI-LetRec: Should not happen" *)
-
-  (* | G.LetRecExp (x, y, t11, t12, e1, e2) ->
-   *    let gamma1 = Environment.add x (TyFun (t11, t12)) gamma in
-   *    let gamma2 = Environment.add y t11 gamma1 in
-   *    let f1, t1 = translate_exp gamma2 e1 in
-   *    if t1 = t12 then
-   *      let f2, t2 = translate_exp gamma1 e2 in
-   *      (C.LetRecExp (x, y, t11, t12, f1, f2), t2)
-   *    else err "CI-LetRec: Should not happen" *)
 
   (* paraty = parameter type, retty = return type *)
   | G.LetRecExp (x, y, paraty, retty, e1, e2) ->
@@ -94,7 +73,7 @@ let rec translate_exp gamma = function
        (C.LetRecExp (x, y, paraty, retty, f1, f2), t2)
      else err "CI-LetRec: Should not happen"
 
-(* 型を返す必要性が無い？ *)
+(* TODO: remove ty from retval? *)
 (* tyenv -> G.program -> C.program * ty *)
 let translate_prog gamma = function
   | G.Exp e ->

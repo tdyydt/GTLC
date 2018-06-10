@@ -3,7 +3,6 @@ open Syntax.C
 open Util
 open Printf
 
-(* rename to TagInt, TagBool, TagFun ?? *)
 type tag =
   | I                           (* int *)
   | B                           (* bool *)
@@ -18,7 +17,7 @@ let string_of_tag = function
 type value =
   | IntV of int
   | BoolV of bool
-  (* function closure: function name, body,
+  (* Function closure consists of function name, body,
    * and environment, which contains values of free variables *)
   | FunV of id * exp * value Environment.t
   (* RecFunV (x,y,e,E) ==> (E)[rec x(y) = e] *)
@@ -26,7 +25,7 @@ type value =
   (* Wrapped function:
    * Wrapped (v,t1,t2,t3,t4) ==> [v: (t1 -> t2) => (t3 -> t4)] *)
   | Wrapped of value * ty * ty * ty * ty
-  (* Tagged value, or Injection:
+  (* Tagged value, aka Injection:
    * Tagged (G, v) ==> [v: G => ?] *)
   | Tagged of tag * value
 
@@ -35,13 +34,14 @@ let rec string_of_value = function
   | BoolV b -> string_of_bool b
   | FunV _ -> "<fun>"
   | RecFunV _ -> "<rec>"        (* or <fun> *)
+  (* Wrapped, Tagged のネストはあるか？ *)
   | Wrapped (v, t1, t2, t3, t4) ->
      (* How should wrapped functions be displayed? *)
-     sprintf "(%s: (%s -> %s) => (%s -> %s))"
+     sprintf "(%s : %s -> %s => %s -> %s)"
        (string_of_value v) (string_of_ty t1) (string_of_ty t2)
        (string_of_ty t3) (string_of_ty t4)
   | Tagged (tag, v) ->
-     sprintf "(%s: %s => ?)"
+     sprintf "(%s : %s => ?)"
        (string_of_value v) (string_of_tag tag)
 
 (* evaluate binary operation *)
@@ -103,16 +103,15 @@ and eval_cast v t1 t2 = match (t1, t2) with
   | TyBool, TyBool -> v
   (* IdStar *)
   | TyDyn, TyDyn -> v
-  (* Put tag, already value *)
-  (* 動的型へのキャストの際に，キャスト前の型の情報を表すタグを付ける *)
+  (* Cast to DYN *)
   | TyInt, TyDyn -> Tagged (I, v)
   | TyBool, TyDyn -> Tagged (B, v)
-  (* Ground = decompose cast *)
+  (* Ground; decompose cast *)
   | TyFun (t11, t12), TyDyn ->
      (* [(v: (t11 -> t12) => (? -> ?)): (? -> ?) => ?] *)
      let v' = Wrapped (v, t11, t12, TyDyn, TyDyn) in Tagged (F, v')
 
-  (* Succeed (Collapse), or Fail (Conflict) *)
+  (* either Succeed (Collapse), or Fail (Conflict) *)
   | TyDyn, TyInt ->
      (match v with
       (* [v': int => ? => int] --> v' *)
@@ -128,8 +127,7 @@ and eval_cast v t1 t2 = match (t1, t2) with
      (match v with
       | Tagged (F, v') -> v'
       | Tagged (_, _) -> err "Blame: Fail fun"
-      (* v: ? => (? -> ?) の時に，
-       * v が Tagged (F, v') でないと blame *)
+      (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
       | _ -> err "Should not happen: Untagged value")
 
   (* Expand *)
@@ -158,7 +156,6 @@ and eval_app v1 v2 = match v1 with
       * [(v1' (v2: t3 => t1)): t2 => t4] *)
      let v2' = eval_cast v2 t3 t1 in
      let v' = eval_app v1' v2' in eval_cast v' t2 t4
-     (* eval_cast (eval_app v1' (eval_cast v2 t3 t1)) t2 t4 *)
   | _ -> err "eval App: Non-function value is applied"
 
 
@@ -169,7 +166,7 @@ let eval_prog env = function
      let v = eval_exp env f in
      (Environment.add x v env, x, v)
   | LetRecDecl (x, y, t1, t2, f) ->
-     (* 暫定: exp に帰着させる *)
+     (* exp に帰着させる (暫定) *)
      (* let rec x (y:t1) : t2 = e in x *)
      let v = eval_exp env (LetRecExp (x, y, t1, t2, f, Var x)) in
      (Environment.add x v env, x, v)
