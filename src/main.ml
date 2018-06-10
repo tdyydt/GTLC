@@ -3,9 +3,7 @@ open Syntax
 open Typing
 open Translate
 open Eval
-open Util
 
-(* TODO: debug = true の時のみ，途中経過を出力 *)
 let rec read_eval_print gamma env =
   print_string "# ";
   flush stdout;
@@ -16,6 +14,7 @@ let rec read_eval_print gamma env =
     let (gamma', x, t) = ty_prog gamma p in
     printf "val %s : %s" x (string_of_ty t);
     print_newline ();
+
     (* Cast Insertion Translation *)
     print_string "[Translation]\n";
     (* q has type C.program *)
@@ -25,6 +24,7 @@ let rec read_eval_print gamma env =
     (* check soundness *)
     print_string (string_of_bool (t = t'));
     print_newline ();
+
     (* Eval *)
     print_string "[Evaluation]\n";
     let (env', x', v) = eval_prog env q in
@@ -33,10 +33,20 @@ let rec read_eval_print gamma env =
     print_newline ();
     read_eval_print gamma' env'
   with
-  | Error s -> print_string s;
-               print_newline ();
-               read_eval_print gamma env
-  | e -> raise e
+  | Util.Error s | Typing_error s | CI_error s | Eval_error s ->
+     print_string s;
+     print_newline ();
+     read_eval_print gamma env
+  (* TODO: improve error message *)
+  | Parsing.Parse_error ->      (* Menhir *)
+     print_string "Parse_error.";
+     print_newline ();
+     read_eval_print gamma env
+  (* Lexer error *)
+  (* e.g. Failure("lexing: empty token") *)
+  | Failure m -> print_string m;
+                 print_newline ();
+                 read_eval_print gamma env
 
 let initial_gamma = Environment.empty
 let initial_env = Environment.empty

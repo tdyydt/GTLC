@@ -1,4 +1,3 @@
-open Util
 open Printf
 
 type id = string

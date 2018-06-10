@@ -4,6 +4,8 @@ open Typing
 
 (* cast-insertion translation *)
 (* cast-insertion should not result in error *)
+exception CI_error of string
+let err s = raise (CI_error s)  (* implementation bug *)
 
 (* insert cast if needed *)
 (* C.exp -> ty -> ty -> C.exp *)

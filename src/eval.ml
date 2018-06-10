@@ -1,7 +1,9 @@
 open Syntax
 open Syntax.C
-open Util
 open Printf
+
+exception Eval_error of string
+let everr s = raise (Eval_error s)
 
 type tag =
   | I                           (* int *)
@@ -56,11 +58,11 @@ let eval_binop op v1 v2 = match op, v1, v2 with
   | LE, IntV n1, IntV n2 -> BoolV (n1 <= n2)
   | GE, IntV n1, IntV n2 -> BoolV (n1 >= n2)
   | (Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE), _, _ ->
-     err ("Both arguments must be integer: " ^ string_of_binop op)
+     everr ("Both arguments must be integer: " ^ string_of_binop op)
   | LAnd, BoolV b1, BoolV b2 -> BoolV (b1 && b2)
   | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
   | (LAnd | LOr), _, _ ->
-     err ("Both arguments must be boolean: " ^ string_of_binop op)
+     everr ("Both arguments must be boolean: " ^ string_of_binop op)
 
 (* Big-step evaluation *)
 (* value Environment.t -> exp -> value *)
@@ -69,7 +71,7 @@ let rec eval_exp env = function
      (try
         let v = Environment.find x env in v
       with
-      | Not_found -> err @@ sprintf "E-Var: %s is not bound" x)
+      | Not_found -> everr (sprintf "E-Var: %s is not bound" x))
   | ILit n -> IntV n
   | BLit b -> BoolV b
   | BinOp (op, f1, f2) ->
@@ -81,7 +83,7 @@ let rec eval_exp env = function
      (match v1 with
       | BoolV true -> eval_exp env f2
       | BoolV false -> eval_exp env f3
-      | _ -> err "E-If: Test expression must be boolean")
+      | _ -> everr "E-If: Test expression must be boolean")
   | LetExp (x, f1, f2) ->
      let v1 = eval_exp env f1 in
      eval_exp (Environment.add x v1 env) f2
@@ -116,19 +118,19 @@ and eval_cast v t1 t2 = match (t1, t2) with
      (match v with
       (* [v': int => ? => int] --> v' *)
       | Tagged (I, v') -> v'
-      | Tagged (_, _) -> err "Blame: Fail int"
-      | _ -> err "Should not happen: Untagged value")
+      | Tagged (_, _) -> everr "Blame: Fail int"
+      | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyBool ->
      (match v with
       | Tagged (B, v') -> v'
-      | Tagged (_, _) -> err "Blame: Fail bool"
-      | _ -> err "Should not happen: Untagged value")
+      | Tagged (_, _) -> everr "Blame: Fail bool"
+      | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyFun (TyDyn, TyDyn) ->
      (match v with
       | Tagged (F, v') -> v'
-      | Tagged (_, _) -> err "Blame: Fail fun"
+      | Tagged (_, _) -> everr "Blame: Fail fun"
       (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
-      | _ -> err "Should not happen: Untagged value")
+      | _ -> everr "Should not happen: Untagged value")
 
   (* Expand *)
   (* When does this happen? *)
@@ -139,7 +141,7 @@ and eval_cast v t1 t2 = match (t1, t2) with
      let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn)) in
      Wrapped (v', TyDyn, TyDyn, t21, t22)
 
-  | _, _ -> err "Should be typing error (or maybe not implemented?)"
+  | _, _ -> everr "Should be typing error (or maybe not implemented?)"
 
 (* evaluate application [v1 v2] *)
 (* value -> value -> value *)
@@ -156,7 +158,7 @@ and eval_app v1 v2 = match v1 with
       * [(v1' (v2: t3 => t1)): t2 => t4] *)
      let v2' = eval_cast v2 t3 t1 in
      let v' = eval_app v1' v2' in eval_cast v' t2 t4
-  | _ -> err "eval App: Non-function value is applied"
+  | _ -> everr "EvalApp: Non-function value is applied"
 
 
 (* value Environment.t -> program -> value *)
