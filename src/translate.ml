@@ -75,14 +75,28 @@ let rec translate_exp gamma = function
          else err "CI-App: Should not happen"
       | None -> err "CI-App: Not a function")
 
-  (* paraty = parameter type, retty = return type *)
-  | G.FixExp (x, y, paraty, retty, e1) ->
-     let gamma1 = Environment.add x (TyFun (paraty, retty)) gamma in
-     let gamma2 = Environment.add y paraty gamma1 in
-     let f1, retty' = translate_exp gamma2 e1 in
-     if retty' = retty then
-       (C.FixExp (x, y, paraty, retty, f1), TyFun (paraty, retty))
-     else err "CI-LetRec: Should not happen"
+  | G.LetRecExp (bindings, e2) ->
+     let new_bindings, gamma1, _ =
+       translate_rec_bindings gamma bindings in
+     let f2, t2 = translate_exp gamma1 e2 in
+     (C.LetRecExp (new_bindings, f2), t2)
+
+(* auxiliary function to translate LetRec bindings *)
+and translate_rec_bindings : tyenv -> (id * id * ty * ty * G.exp) list -> (id * id * ty * ty * C.exp) list * tyenv * (id * ty) list =
+  fun gamma bindings ->
+  let ty_bindings =
+    List.map (fun (x,_,paraty,retty,_) -> (x, TyFun (paraty,retty)))
+      bindings in
+  let gamma1 = Environment.add_all ty_bindings gamma in
+  let new_bindings =            (* LetRec bindings in CC *)
+    List.map (fun (x,y,paraty,retty,e1) ->
+        let gamma2 = Environment.add y paraty gamma1 in
+        let f1, retty' = translate_exp gamma2 e1 in
+        if retty' = retty then (x,y,paraty,retty,f1)
+        else err "CI-RecBindings: Should not happen")
+      bindings
+  in (new_bindings, gamma1, ty_bindings)
+
 
 (* TODO: remove ty from retval? *)
 (* tyenv -> G.program -> C.program * (id * ty) list *)
@@ -96,3 +110,6 @@ let translate_prog gamma = function
          bindings in
      (C.LetDecl (List.map (fun (x,f1,_) -> (x,f1)) new_bindings),
       List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
+  | G.LetRecDecl bindings ->
+     let new_bindings, _, ty_bindings = translate_rec_bindings gamma bindings
+     in (C.LetRecDecl new_bindings, ty_bindings)

@@ -93,15 +93,29 @@ let rec ty_exp gamma = function
       | None -> tyerr (sprintf "GT-App: %s is not a function type"
                          (string_of_ty t1)))
 
-  | FixExp (x, y, t1, t2, e1) ->
-     let gamma1 = Environment.add x (TyFun (t1, t2)) gamma in
-     let gamma2 = Environment.add y t1 gamma1 in
-     let t2' = ty_exp gamma2 e1 in
-     (* consistency rather than equality?? *)
-     if t2' = t2 then TyFun (t1, t2)
-     else tyerr (sprintf ("GT-LetRec: return type %s does not equal"
-                          ^^ " to the given annotation %s")
-                   (string_of_ty t2') (string_of_ty t2))
+  | LetRecExp (bindings, e2) ->
+     let gamma1, _ = ty_rec_bindings gamma bindings in
+     ty_exp gamma1 e2
+
+(* auxiliary function for typing LetRec bindings *)
+and ty_rec_bindings : tyenv -> (id * id * ty * ty * exp) list -> tyenv * (id * ty) list =
+  fun gamma bindings ->
+  let ty_bindings =
+    List.map (fun (x,_,paraty,retty,_) -> (x, TyFun (paraty,retty)))
+      bindings in
+  (* n個の関数を束縛 *)
+  let gamma1 = Environment.add_all ty_bindings gamma in
+  (* まず，n個のe1を型付け・型注釈が正しいことを確認する *)
+  List.iter (fun (x,y,paraty,retty,e1) ->
+      let gamma2 = Environment.add y paraty gamma1 in
+      let retty' = ty_exp gamma2 e1 in
+      (* consistency rather than equality?? *)
+      if retty' = retty then ()
+      else tyerr (sprintf ("GT-LetRec: return type %s does not equal"
+                           ^^ " to the given annotation %s")
+                    (string_of_ty retty') (string_of_ty retty)))
+    bindings;
+  (gamma1, ty_bindings)
 
 (* tyenv -> program -> tyenv * (id * ty) list *)
 let ty_prog gamma = function
@@ -112,3 +126,4 @@ let ty_prog gamma = function
        List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
      let gamma' = Environment.add_all ty_bindings gamma in
      (gamma', ty_bindings)
+  | LetRecDecl bindings -> ty_rec_bindings gamma bindings
