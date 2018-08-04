@@ -10,7 +10,7 @@ PROGNAME=gtlc
 OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo typing.cmo \
      translate.cmo eval.cmo
 
-DEPEND += lexer.ml parser.ml
+# DEPEND += lexer.ml parser.ml
 
 all: $(PROGNAME)
 
@@ -43,7 +43,10 @@ lexer.ml: lexer.mll
 	@chmod -w $@
 
 clean:
+	rm -f $(PROGNAME)
 	rm -f *.cm[iox]
+	rm -f parser.ml parser.mli parser.output lexer.ml
+	rm -f .depend
 
 # Dependencies
 depend:: $(DEPEND)
