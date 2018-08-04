@@ -1,5 +1,6 @@
 open Syntax
 open Syntax.C
+open Stringify
 open Printf
 
 exception Eval_error of string

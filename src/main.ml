@@ -3,6 +3,7 @@ open Syntax
 open Typing
 open Translate
 open Eval
+open Stringify
 
 let rec read_eval_print gamma env =
   print_string "# ";

@@ -1,5 +1,6 @@
 open Syntax
 open Syntax.G
+open Stringify
 open Printf
 
 exception Typing_error of string
