@@ -33,14 +33,21 @@ open Printf
 toplevel :
   | p=program SEMISEMI { p }
 
+program :
+  | e=expr { Exp e }
+  | LET p=let_binding { let x, e = p in LetDecl (x,e) }
+  (* tup for tuple *)
+  | LET REC tup=rec_binding { let (x, y, t1, t2, e) = tup in
+                              LetDecl (x, FixExp (x,y,t1,t2,e)) }
+
 (* parameter *)
 para :
   | LPAREN x=ID COLON t=ty RPAREN { (x,t) }
   | x=ID { err (sprintf "Type annotation for %s is mandatory." x) }
 
-(* let x = e *)
+(* x = e *)
 let_binding :
-  | LET x=ID paras=para* EQ e=expr
+  | x=ID paras=para* EQ e=expr
     { (* let f (x:t1) (y:t2) = e
        * ==> let f = fun (x:t1) -> fun (x:t2) -> e *)
       let e' = List.fold_right
@@ -49,11 +56,11 @@ let_binding :
                  paras e
       in (x, e') }
 
-(* let rec f (x:S) : T *)
+(* f (x:S) : T = e *)
 rec_binding :
   (* 最初の para は特別扱い *)
   (* let rec x (y:t1) [paras] : t2 = ... *)
-  | LET REC funid=ID para=para paras=para* COLON retty=ty EQ e0=expr
+  | funid=ID para=para paras=para* COLON retty=ty EQ e0=expr
     { let paraid, paraty = para in
       let e' = List.fold_right
                  (fun (x,t) e_acc -> FunExp (x, t, e_acc))
@@ -61,22 +68,16 @@ rec_binding :
       in (funid, paraid, paraty, retty, e') }
 
   (* Not necessary *)
-  | LET REC funid=ID para para* EQ e0=expr
+  | funid=ID para para* EQ e0=expr
     { err (sprintf "Return type annotation for %s is mandatory." funid) }
 
-program :
-  | e=expr { Exp e }
-  | p=let_binding { let x, e = p in LetDecl (x,e) }
-  (* tup for tuple *)
-  | tup=rec_binding { let (x, y, t1, t2, e) = tup in
-                      LetDecl (x, FixExp (x,y,t1,t2,e)) }
-
+(* Expressions *)
 expr :
   | e1=expr op=binop e2=expr { BinOp (op, e1, e2) }
 
   | IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
     { IfExp (e1, e2, e3) }
-  | p=let_binding IN e2=expr %prec prec_let
+  | LET p=let_binding IN e2=expr %prec prec_let
     { let x, e1 = p in LetExp (x, e1, e2) }
 
   (* paras must not be empty *)
@@ -85,7 +86,7 @@ expr :
         (fun (x,t) e_acc -> FunExp (x, t, e_acc))
         paras e0 }
 
-  | tup=rec_binding IN e2=expr %prec prec_let
+  | LET REC tup=rec_binding IN e2=expr %prec prec_let
     { let (x, y, t1, t2, e1) = tup in
       LetExp (x, FixExp (x,y,t1,t2,e1), e2) }
   | e=minus_expr { e }
