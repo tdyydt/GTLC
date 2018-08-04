@@ -1,5 +1,9 @@
 open Printf
 
+(* used in parser.mly *)
+exception Syntax_error of string
+let err s = raise (Syntax_error s)
+
 type id = string
 
 type ty =

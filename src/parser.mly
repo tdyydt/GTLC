@@ -36,7 +36,7 @@ toplevel :
 (* parameter *)
 para :
   | LPAREN x=ID COLON t=ty RPAREN { (x,t) }
-  | x=ID { Util.err (sprintf "Type annotation for %s is mandatory." x) }
+  | x=ID { err (sprintf "Type annotation for %s is mandatory." x) }
 
 (* let x = e *)
 let_binding :
@@ -62,7 +62,7 @@ rec_binding :
 
   (* Not necessary *)
   | LET REC funid=ID para para* EQ e0=expr
-    { Util.err (sprintf "Return type annotation for %s is mandatory." funid) }
+    { err (sprintf "Return type annotation for %s is mandatory." funid) }
 
 program :
   | e=expr { Exp e }

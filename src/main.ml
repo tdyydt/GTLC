@@ -33,7 +33,7 @@ let rec read_eval_print gamma env =
     print_newline ();
     read_eval_print gamma' env'
   with
-  | Util.Error s | Typing_error s | CI_error s | Eval_error s ->
+  | Syntax_error s | Typing_error s | CI_error s | Eval_error s ->
      print_string s;
      print_newline ();
      read_eval_print gamma env
