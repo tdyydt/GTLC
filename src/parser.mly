@@ -8,7 +8,7 @@ open Printf
 %token PLUS MINUS MULT DIV
 %token LT GT LE GE LAND LOR
 %token IF THEN ELSE TRUE FALSE
-%token LET IN EQ REC
+%token LET IN EQ REC AND
 %token RARROW FUN
 %token INT BOOL QU              (* Types *)
 %token COLON
@@ -35,10 +35,13 @@ toplevel :
 
 program :
   | e=expr { Exp e }
-  | LET p=let_binding { let x, e = p in LetDecl (x,e) }
-  (* tup for tuple *)
-  | LET REC tup=rec_binding { let (x, y, t1, t2, e) = tup in
-                              LetDecl (x, FixExp (x,y,t1,t2,e)) }
+  | LET bindings=separated_nonempty_list(AND, let_binding)
+    { LetDecl bindings }
+  | LET REC rec_bindings=separated_nonempty_list(AND, rec_binding)
+    { let bindings =
+        List.map (fun (x,y,t1,t2,e) -> (x, FixExp (x,y,t1,t2,e)))
+          rec_bindings
+      in LetDecl bindings }
 
 (* parameter *)
 para :
@@ -77,8 +80,9 @@ expr :
 
   | IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
     { IfExp (e1, e2, e3) }
-  | LET p=let_binding IN e2=expr %prec prec_let
-    { let x, e1 = p in LetExp (x, e1, e2) }
+  | LET bindings=separated_nonempty_list(AND, let_binding)
+    IN e=expr %prec prec_let
+    { LetExp (bindings, e) }
 
   (* paras must not be empty *)
   | FUN paras=para+ RARROW e0=expr %prec prec_fun
@@ -86,9 +90,12 @@ expr :
         (fun (x,t) e_acc -> FunExp (x, t, e_acc))
         paras e0 }
 
-  | LET REC tup=rec_binding IN e2=expr %prec prec_let
-    { let (x, y, t1, t2, e1) = tup in
-      LetExp (x, FixExp (x,y,t1,t2,e1), e2) }
+  | LET REC rec_bindings=separated_nonempty_list(AND, rec_binding)
+    IN e2=expr %prec prec_let
+    { let bindings =
+        List.map (fun (x,y,t1,t2,e1) -> (x, FixExp (x,y,t1,t2,e1)))
+          rec_bindings
+      in LetExp (bindings, e2) }
   | e=minus_expr { e }
 
 (* %inline is necessary; see Sec 5.3 of manual *)

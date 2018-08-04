@@ -20,7 +20,7 @@ module G = struct
     | BLit of bool
     | BinOp of binOp * exp * exp
     | IfExp of exp * exp * exp
-    | LetExp of id * exp * exp
+    | LetExp of (id * exp) list * exp
     (* Type annotation is mandatory at this moment. *)
     (* FunExp (x,t,e) ==> [fun (x:t) -> e] *)
     | FunExp of id * ty * exp
@@ -31,7 +31,7 @@ module G = struct
   type program =
     | Exp of exp
     (* LetDecl(x,e) ==> [let x = e] *)
-    | LetDecl of id * exp
+    | LetDecl of (id * exp) list
 end
 
 (* Cast Calculus *)
@@ -42,7 +42,7 @@ module C = struct
     | BLit of bool
     | BinOp of binOp * exp * exp
     | IfExp of exp * exp * exp
-    | LetExp of id * exp * exp
+    | LetExp of (id * exp) list * exp
     | FunExp of id * ty * exp
     | AppExp of exp * exp
     | FixExp of id * id * ty * ty * exp
@@ -51,5 +51,5 @@ module C = struct
 
   type program =
     | Exp of exp
-    | LetDecl of id * exp
+    | LetDecl of (id * exp) list
 end
