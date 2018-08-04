@@ -38,10 +38,7 @@ program :
   | LET bindings=separated_nonempty_list(AND, let_binding)
     { LetDecl bindings }
   | LET REC rec_bindings=separated_nonempty_list(AND, rec_binding)
-    { let bindings =
-        List.map (fun (x,y,t1,t2,e) -> (x, FixExp (x,y,t1,t2,e)))
-          rec_bindings
-      in LetDecl bindings }
+    { LetRecDecl rec_bindings }
 
 (* parameter *)
 para :
@@ -92,10 +89,7 @@ expr :
 
   | LET REC rec_bindings=separated_nonempty_list(AND, rec_binding)
     IN e2=expr %prec prec_let
-    { let bindings =
-        List.map (fun (x,y,t1,t2,e1) -> (x, FixExp (x,y,t1,t2,e1)))
-          rec_bindings
-      in LetExp (bindings, e2) }
+    { LetRecExp (rec_bindings, e2) }
   | e=minus_expr { e }
 
 (* %inline is necessary; see Sec 5.3 of manual *)
