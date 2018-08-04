@@ -88,7 +88,7 @@ expr :
   | tup=rec_binding IN e2=expr %prec prec_let
     { let (x, y, t1, t2, e1) = tup in
       LetRecExp (x, y, t1, t2, e1, e2) }
-  | e=unary_expr { e }
+  | e=minus_expr { e }
 
 (* %inline is necessary; see Sec 5.3 of manual *)
 %inline binop :
@@ -105,8 +105,8 @@ expr :
   | LOR { LOr }
 
 (* `n-1` should be BinOp(Minus, n, 1), not App(n, -1) *)
-unary_expr :
-  | MINUS e=unary_expr { BinOp (Minus, ILit 0, e) }
+minus_expr :
+  | MINUS e=minus_expr { BinOp (Minus, ILit 0, e) }
   | e=app_expr { e }
 
 (* To avoid conflicts *)
