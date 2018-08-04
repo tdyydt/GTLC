@@ -49,7 +49,7 @@ let_binding :
                  paras e
       in (x, e') }
 
-(* let rec f (x:S) : T = e *)
+(* let rec f (x:S) : T *)
 rec_binding :
   (* 最初の para は特別扱い *)
   (* let rec x (y:t1) [paras] : t2 = ... *)
@@ -69,7 +69,7 @@ program :
   | p=let_binding { let x, e = p in LetDecl (x,e) }
   (* tup for tuple *)
   | tup=rec_binding { let (x, y, t1, t2, e) = tup in
-                      LetRecDecl (x, y, t1, t2, e) }
+                      LetDecl (x, FixExp (x,y,t1,t2,e)) }
 
 expr :
   | e1=expr op=binop e2=expr { BinOp (op, e1, e2) }
@@ -87,7 +87,7 @@ expr :
 
   | tup=rec_binding IN e2=expr %prec prec_let
     { let (x, y, t1, t2, e1) = tup in
-      LetRecExp (x, y, t1, t2, e1, e2) }
+      LetExp (x, FixExp (x,y,t1,t2,e1), e2) }
   | e=minus_expr { e }
 
 (* %inline is necessary; see Sec 5.3 of manual *)

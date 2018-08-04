@@ -67,26 +67,23 @@ module G = struct
     (* FunExp (x,t,e) ==> [fun (x:t) -> e] *)
     | FunExp of id * ty * exp
     | AppExp of exp * exp
-    (* LetRec (f,x,t1,t2,e1,e2) ==>
-     * [let rec f (x:t1) : t2 = e1 in e2]
-     * where t2 is return type annotation *)
-    | LetRecExp of id * id * ty * ty * exp * exp
+    (* FixExp (x,y,t1,t2,e) ==> [fix x (y:t1) : t2 -> e] *)
+    | FixExp of id * id * ty * ty * exp
 
   type program =
     | Exp of exp
     (* LetDecl(x,e) ==> [let x = e] *)
     | LetDecl of id * exp
-    (* LetRecDecl(x,y,t1,t2,e) ==> [let rec x (y:t1) : t2 = e] *)
-    | LetRecDecl of id * id * ty * ty * exp
 
   (* stringify ***********)
   (* precedence of expression *)
   let prec_exp = function
-    | LetExp _ | LetRecExp _ | FunExp _ -> 10
+    | LetExp _ | FunExp _ -> 10
     | IfExp _ -> 20
     | BinOp (op, _, _) -> 30 + prec_binop op
     | AppExp _ -> 40
     | Var _ | ILit _ | BLit _ -> 50
+    | FixExp _ -> assert false
 
   (* e1 > e2 : e1 associates stronger than e2 *)
   let gt_exp e1 e2 = (prec_exp e1) > (prec_exp e2)
@@ -109,6 +106,13 @@ module G = struct
          (with_paren (ge_exp e e1) (string_of_exp e1))
          (with_paren (ge_exp e e2) (string_of_exp e2))
          (string_of_exp e3)
+    (* LetRecExp *)
+    | LetExp (x, FixExp (x', y, t1, t2, e1), e2) as e ->
+       assert (x = x');         (* function name *)
+       sprintf "let rec %s (%s : %s) : %s = %s in %s"
+         x y (string_of_ty t1) (string_of_ty t2)
+         (with_paren (ge_exp e e1) (string_of_exp e1))
+         (string_of_exp e2)
     | LetExp (x, e1, e2) as e ->
        sprintf "let %s = %s in %s"
          x (with_paren (ge_exp e e1) (string_of_exp e1))
@@ -121,19 +125,17 @@ module G = struct
        sprintf "%s %s"
          (with_paren (gt_exp e e1) (string_of_exp e1))
          (with_paren (ge_exp e e2) (string_of_exp e2))
-    | LetRecExp (x, y, t1, t2, e1, e2) as e ->
-       sprintf "let rec %s (%s : %s) : %s = %s in %s"
-         x y (string_of_ty t1) (string_of_ty t2)
-         (with_paren (ge_exp e e1) (string_of_exp e1))
-         (string_of_exp e2)
+    | FixExp _ -> assert false
 
   let rec string_of_program = function
     | Exp e -> string_of_exp e
-    | LetDecl (x, e) ->
-       sprintf "let %s = %s" x (string_of_exp e)
-    | LetRecDecl (x, y, t1, t2, e) ->
+    (* LetRecDecl *)
+    | LetDecl (x, FixExp (x', y, t1, t2, e)) ->
+       assert (x = x');
        sprintf "let rec %s (%s : %s) : %s = %s"
          x y (string_of_ty t1) (string_of_ty t2) (string_of_exp e)
+    | LetDecl (x, e) ->
+       sprintf "let %s = %s" x (string_of_exp e)
 end
 
 (* Cast Calculus *)
@@ -147,24 +149,24 @@ module C = struct
     | LetExp of id * exp * exp
     | FunExp of id * ty * exp
     | AppExp of exp * exp
-    | LetRecExp of id * id * ty * ty * exp * exp
+    | FixExp of id * id * ty * ty * exp
     (* CastExp(f,t1,t2) ==> [f: t1 => t2]  *)
     | CastExp of exp * ty * ty
 
   type program =
     | Exp of exp
     | LetDecl of id * exp
-    | LetRecDecl of id * id * ty * ty * exp
 
   (* stringify ***********)
   (* precedence of expression *)
   let prec_exp = function
-    | LetExp _ | LetRecExp _ | FunExp _ -> 10
+    | LetExp _ | FunExp _ -> 10
     | IfExp _ -> 20
     | CastExp _ -> 21           (* ?????? *)
     | BinOp (op, _, _) -> 30 + prec_binop op
     | AppExp _ -> 40
     | Var _ | ILit _ | BLit _ -> 50
+    | FixExp _ -> assert false
 
   (* f1 > f2 : f1 associates stronger than f2 *)
   let gt_exp f1 f2 = (prec_exp f1) > (prec_exp f2)
@@ -187,6 +189,13 @@ module C = struct
          (with_paren (ge_exp f f1) (string_of_exp f1))
          (with_paren (ge_exp f f2) (string_of_exp f2))
          (string_of_exp f3)
+    (* LetRecExp *)
+    | LetExp (x, FixExp (x', y, t1, t2, f1), f2) as f ->
+       assert (x = x');
+       sprintf "let rec %s (%s : %s) : %s = %s in %s"
+         x y (string_of_ty t1) (string_of_ty t2)
+         (with_paren (ge_exp f f1) (string_of_exp f1))
+         (string_of_exp f2)
     | LetExp (x, f1, f2) as f ->
        sprintf "let %s = %s in %s"
          x (with_paren (ge_exp f f1) (string_of_exp f1))
@@ -199,21 +208,19 @@ module C = struct
        sprintf "%s %s"
          (with_paren (gt_exp f f1) (string_of_exp f1))
          (with_paren (ge_exp f f2) (string_of_exp f2))
-    | LetRecExp (x, y, t1, t2, f1, f2) as f ->
-       sprintf "let rec %s (%s : %s) : %s = %s in %s"
-         x y (string_of_ty t1) (string_of_ty t2)
-         (with_paren (ge_exp f f1) (string_of_exp f1))
-         (string_of_exp f2)
     | CastExp (f1, t1, t2) as f ->
        sprintf "%s : %s => %s"
          (with_paren (ge_exp f f1) (string_of_exp f1))
          (string_of_ty t1) (string_of_ty t2)
+    | FixExp _ -> assert false
 
   let rec string_of_program = function
     | Exp f -> string_of_exp f
-    | LetDecl (x, f) ->
-       sprintf "let %s = %s" x (string_of_exp f)
-    | LetRecDecl (x, y, t1, t2, f) ->
+    (* LetRecDecl *)
+    | LetDecl (x, FixExp (x', y, t1, t2, f)) ->
+       assert (x = x');
        sprintf "let rec %s (%s : %s) : %s = %s"
          x y (string_of_ty t1) (string_of_ty t2) (string_of_exp f)
+    | LetDecl (x, f) ->
+       sprintf "let %s = %s" x (string_of_exp f)
 end

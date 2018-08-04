@@ -92,8 +92,7 @@ let rec eval_exp env = function
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
      eval_app v1 v2
-  | LetRecExp (x, y, _, _, f1, f2) ->
-     eval_exp (Environment.add x (RecFunV (x, y, f1, env)) env) f2
+  | FixExp (x, y, _, _, f1) -> RecFunV (x, y, f1, env)
   | CastExp (f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2
 
@@ -166,9 +165,4 @@ let eval_prog env = function
   | Exp f -> (env, "-", eval_exp env f)
   | LetDecl (x, f) ->
      let v = eval_exp env f in
-     (Environment.add x v env, x, v)
-  | LetRecDecl (x, y, t1, t2, f) ->
-     (* exp に帰着させる (暫定) *)
-     (* let rec x (y:t1) : t2 = e in x *)
-     let v = eval_exp env (LetRecExp (x, y, t1, t2, f, Var x)) in
      (Environment.add x v env, x, v)
