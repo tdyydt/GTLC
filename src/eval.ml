@@ -6,14 +6,14 @@ exception Eval_error of string
 let everr s = raise (Eval_error s)
 
 type tag =
-  | I                           (* int *)
-  | B                           (* bool *)
-  | F                           (* Function (Arrow) [?->?] *)
+  | IntT                        (* int *)
+  | BoolT                       (* bool *)
+  | FunT                        (* Function (Arrow) [?->?] *)
 
 let string_of_tag = function
-  | I -> "int"
-  | B -> "bool"
-  | F -> "? -> ?"
+  | IntT -> "int"
+  | BoolT -> "bool"
+  | FunT -> "? -> ?"
 
 (* exval, dnval *)
 type value =
@@ -105,28 +105,28 @@ and eval_cast v t1 t2 = match (t1, t2) with
   (* IdStar *)
   | TyDyn, TyDyn -> v
   (* Cast to DYN *)
-  | TyInt, TyDyn -> Tagged (I, v)
-  | TyBool, TyDyn -> Tagged (B, v)
+  | TyInt, TyDyn -> Tagged (IntT, v)
+  | TyBool, TyDyn -> Tagged (BoolT, v)
   (* Ground; decompose cast *)
   | TyFun (t11, t12), TyDyn ->
      (* [(v: (t11 -> t12) => (? -> ?)): (? -> ?) => ?] *)
-     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn) in Tagged (F, v')
+     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn) in Tagged (FunT, v')
 
   (* either Succeed (Collapse), or Fail (Conflict) *)
   | TyDyn, TyInt ->
      (match v with
       (* [v': int => ? => int] --> v' *)
-      | Tagged (I, v') -> v'
+      | Tagged (IntT, v') -> v'
       | Tagged (_, _) -> everr "Blame: Fail int"
       | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyBool ->
      (match v with
-      | Tagged (B, v') -> v'
+      | Tagged (BoolT, v') -> v'
       | Tagged (_, _) -> everr "Blame: Fail bool"
       | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyFun (TyDyn, TyDyn) ->
      (match v with
-      | Tagged (F, v') -> v'
+      | Tagged (FunT, v') -> v'
       | Tagged (_, _) -> everr "Blame: Fail fun"
       (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
       | _ -> everr "Should not happen: Untagged value")
