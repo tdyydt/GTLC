@@ -46,10 +46,20 @@ let rec translate_exp gamma = function
          (C.IfExp (cast_opt f1 t1 TyBool, f2, f3), t2)
        else err "CI-If-branches: Should not happen"
      else err "CI-If-test: Should not happen"
-  | G.LetExp (x, e1, e2) ->
-     let f1, t1 = translate_exp gamma e1 in
-     let f2, t2 = translate_exp (Environment.add x t1 gamma) e2 in
-     (C.LetExp (x, f1, f2), t2)
+  | G.LetExp (bindings, e2) ->
+     let new_bindings =
+       List.map (fun (x,e1) ->
+           let f1, t1 = translate_exp gamma e1 in (x, f1, t1))
+         bindings in
+     let gamma' =
+       Environment.add_all
+         (List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
+         gamma in
+     let f2, t2 = translate_exp gamma' e2 in
+     let f = C.LetExp (List.map (fun (x,f1,_) -> (x,f1)) new_bindings,
+                       f2)
+     in (f, t2)
+
   | G.FunExp (x, t, e) ->
      let f, u = translate_exp (Environment.add x t gamma) e in
      (C.FunExp (x, t, f), TyFun (t, u))
@@ -75,9 +85,14 @@ let rec translate_exp gamma = function
      else err "CI-LetRec: Should not happen"
 
 (* TODO: remove ty from retval? *)
-(* tyenv -> G.program -> C.program * ty *)
+(* tyenv -> G.program -> C.program * (id * ty) list *)
 let translate_prog gamma = function
   | G.Exp e ->
-     let f, t = translate_exp gamma e in (C.Exp f, t)
-  | G.LetDecl (x, e) ->
-     let f, t = translate_exp gamma e in (C.LetDecl (x, f), t)
+     let f, t = translate_exp gamma e in (C.Exp f, [("-", t)])
+  | G.LetDecl bindings ->
+     let new_bindings =
+       List.map (fun (x,e1) ->
+           let f1, t1 = translate_exp gamma e1 in (x, f1, t1))
+         bindings in
+     (C.LetDecl (List.map (fun (x,f1,_) -> (x,f1)) new_bindings),
+      List.map (fun (x,_,t1) -> (x,t1)) new_bindings)

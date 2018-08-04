@@ -85,9 +85,13 @@ let rec eval_exp env = function
       | BoolV true -> eval_exp env f2
       | BoolV false -> eval_exp env f3
       | _ -> everr "E-If: Test expression must be boolean")
-  | LetExp (x, f1, f2) ->
-     let v1 = eval_exp env f1 in
-     eval_exp (Environment.add x v1 env) f2
+  | LetExp (bindings, f2) ->
+     let val_bindings =
+       List.map (fun (x,f1) -> (x, eval_exp env f1))
+         bindings in
+     let env' = Environment.add_all val_bindings env in
+     eval_exp env' f2
+
   | FunExp (x, _, f) -> FunV (x, f, env)
   | AppExp (f1, f2) ->
      let v1 = eval_exp env f1 in
@@ -161,9 +165,12 @@ and eval_app v1 v2 = match v1 with
   | _ -> everr "EvalApp: Non-function value is applied"
 
 
-(* value Environment.t -> program -> value *)
+(* env -> program -> env * (id * value) list *)
 let eval_prog env = function
-  | Exp f -> (env, "-", eval_exp env f)
-  | LetDecl (x, f) ->
-     let v = eval_exp env f in
-     (Environment.add x v env, x, v)
+  | Exp f -> let v = eval_exp env f in (env, [("-", v)])
+  | LetDecl bindings ->
+     let val_bindings =
+       List.map (fun (x,f1) -> (x, eval_exp env f1))
+         bindings in
+     let env' = Environment.add_all val_bindings env in
+     (env', val_bindings)

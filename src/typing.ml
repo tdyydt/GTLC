@@ -6,6 +6,8 @@ open Printf
 exception Typing_error of string
 let tyerr s = raise (Typing_error s)
 
+type tyenv = ty Environment.t
+
 (* ty -> ty -> bool *)
 let rec are_consistent t1 t2 = match (t1,t2) with
   | (TyDyn, _) -> true
@@ -71,9 +73,12 @@ let rec ty_exp gamma = function
      else tyerr (sprintf "GT-If-test: %s is not consistent with bool"
                    (string_of_ty t1))
 
-  | LetExp (x, e1, e2) ->
-     let t1 = ty_exp gamma e1 in
-     ty_exp (Environment.add x t1 gamma) e2
+  | LetExp (bindings, e2) ->
+     let ty_bindings =
+       List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
+     let gamma' = Environment.add_all ty_bindings gamma in
+     ty_exp gamma' e2
+
   | FunExp (x, t, e) ->
      let u = ty_exp (Environment.add x t gamma) e in
      TyFun (t,u)
@@ -98,10 +103,12 @@ let rec ty_exp gamma = function
                           ^^ " to the given annotation %s")
                    (string_of_ty t2') (string_of_ty t2))
 
-(* tyenv -> program -> tyenv * id * ty *)
+(* tyenv -> program -> tyenv * (id * ty) list *)
 let ty_prog gamma = function
   | Exp e ->
-     let t = ty_exp gamma e in (gamma, "-", t)
-  | LetDecl (x, e) ->
-     let t = ty_exp gamma e in
-     (Environment.add x t gamma, x, t)
+     let t = ty_exp gamma e in (gamma, [("-", t)])
+  | LetDecl bindings ->
+     let ty_bindings =
+       List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
+     let gamma' = Environment.add_all ty_bindings gamma in
+     (gamma', ty_bindings)

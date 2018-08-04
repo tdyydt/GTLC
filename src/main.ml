@@ -9,29 +9,34 @@ let rec read_eval_print gamma env =
   print_string "# ";
   flush stdout;
   try
-    (* p has type G.program *)
-    let p = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
+    let p : Syntax.G.program =
+      Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
     print_string "[Typing]\n";
-    let (gamma', x, t) = ty_prog gamma p in
-    printf "val %s : %s" x (string_of_ty t);
-    print_newline ();
+    let (gamma', ty_bindings) = ty_prog gamma p in
+    List.iter (fun (x,t) ->
+        printf "val %s : %s" x (string_of_ty t);
+        print_newline ())
+      ty_bindings;
 
     (* Cast Insertion Translation *)
     print_string "[Translation]\n";
-    (* q has type C.program *)
-    let q, t' = translate_prog gamma p in
-    print_string (C.string_of_program q);
-    print_newline ();
+    (* q : Syntax.C.program *)
+    let (q, ty_bindings') = translate_prog gamma p in
     (* check soundness *)
-    print_string (string_of_bool (t = t'));
+    assert (ty_bindings = ty_bindings');
+    (* result of translation *)
+    (* print_string (C.string_of_program q); *)
     print_newline ();
 
     (* Eval *)
     print_string "[Evaluation]\n";
-    let (env', x', v) = eval_prog env q in
-    assert (x' = x);
-    printf "val %s : %s = %s" x (string_of_ty t) (string_of_value v);
-    print_newline ();
+    let (env', val_bindings) = eval_prog env q in
+    List.iter2 (fun (x,t) (x',v) ->
+        assert (x' = x);
+        printf "val %s : %s = %s" x (string_of_ty t) (string_of_value v);
+        print_newline ())
+      ty_bindings val_bindings;
+
     read_eval_print gamma' env'
   with
   | Syntax_error s | Typing_error s | CI_error s | Eval_error s ->
