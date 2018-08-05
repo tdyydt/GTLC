@@ -26,15 +26,16 @@ type value =
   | BoolV of bool
   (* Function closure consists of function name, body,
    * and environment, which contains values of free variables *)
-  | FunV of id * exp * value Environment.t
+  | FunV of id * exp * env
   (* RecFunV (x,y,e,E) ==> (E)[rec x(y) = e] *)
-  | RecFunV of id * id * exp * value Environment.t
+  | RecFunV of id * id * exp * env
   (* Wrapped function:
    * Wrapped (v,t1,t2,t3,t4) ==> [v: (t1 -> t2) => (t3 -> t4)] *)
   | Wrapped of value * ty * ty * ty * ty
   (* Tagged value, aka Injection:
    * Tagged (G, v) ==> [v: G => ?] *)
   | Tagged of tag * value
+and env = value Environment.t
 
 let rec string_of_value = function
   | IntV n -> string_of_int n
@@ -52,7 +53,8 @@ let rec string_of_value = function
        (string_of_value v) (string_of_tag tag)
 
 (* evaluate binary operation *)
-let eval_binop op v1 v2 = match op, v1, v2 with
+let eval_binop (op : binOp) (v1 : value) (v2 : value) : value =
+  match op, v1, v2 with
   | Plus, IntV n1, IntV n2 -> IntV (n1 + n2)
   | Minus, IntV n1, IntV n2 -> IntV (n1 - n2)
   | Mult, IntV n1, IntV n2 -> IntV (n1 * n2)
@@ -70,8 +72,7 @@ let eval_binop op v1 v2 = match op, v1, v2 with
      everr ("Both arguments must be boolean: " ^ string_of_binop op)
 
 (* Big-step evaluation *)
-(* value Environment.t -> exp -> value *)
-let rec eval_exp env = function
+let rec eval_exp : env -> exp -> value = fun env -> function
   | Var x ->
      (try
         let v = Environment.find x env in v
@@ -111,8 +112,7 @@ let rec eval_exp env = function
      let v = eval_exp env f in eval_cast v t1 t2
 
 (* evaluate application [v1 v2] *)
-(* value -> value -> value *)
-and eval_app v1 v2 = match v1 with
+and eval_app (v1 : value) (v2 : value) : value = match v1 with
   | FunV (x, body, fun_env) ->
      (* [(fun (x:_) -> body) v2] *)
      eval_exp (Environment.add x v2 fun_env) body
@@ -128,8 +128,8 @@ and eval_app v1 v2 = match v1 with
   | _ -> everr "EvalApp: Non-function value is applied"
 
 (* evaluate cast [v: t1 => t2] *)
-(* value -> ty -> ty -> value *)
-and eval_cast v t1 t2 = match (t1, t2) with
+and eval_cast (v : value) (t1 : ty) (t2 : ty) : value =
+  match (t1, t2) with
   (* IdBase *)
   | TyInt, TyInt -> v
   | TyBool, TyBool -> v
@@ -174,8 +174,8 @@ and eval_cast v t1 t2 = match (t1, t2) with
   | _, _ -> everr "Should not happen"
 
 
-(* env -> program -> env * (id * value) list *)
-let eval_prog env = function
+let eval_prog : env -> program -> env * (id * value) list =
+  fun env -> function
   | Exp f -> let v = eval_exp env f in (env, [("-", v)])
   | LetDecl bindings ->
      let val_bindings =

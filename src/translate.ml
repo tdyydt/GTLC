@@ -8,14 +8,13 @@ exception CI_error of string
 let err s = raise (CI_error s)  (* implementation bug *)
 
 (* insert cast if needed *)
-(* C.exp -> ty -> ty -> C.exp *)
-let cast_opt f t1 t2 =
+let cast_opt (f : C.exp) (t1 : ty) (t2 : ty) : C.exp =
   if t1 = t2 then f
   else C.CastExp (f,t1,t2)
 
 (* cast insertion [G |- e ~> f : T] *)
-(* tyenv -> G.exp -> C.exp * ty *)
-let rec translate_exp gamma = function
+let rec translate_exp : tyenv -> G.exp -> C.exp * ty =
+  fun gamma -> function
   | G.Var x ->
      (try
         let t = Environment.find x gamma in (C.Var x, t)
@@ -98,9 +97,8 @@ and translate_rec_bindings : tyenv -> (id * id * ty * ty * G.exp) list -> (id * 
   in (new_bindings, gamma1, ty_bindings)
 
 
-(* TODO: remove ty from retval? *)
-(* tyenv -> G.program -> C.program * (id * ty) list *)
-let translate_prog gamma = function
+let translate_prog : tyenv -> G.program -> C.program * (id * ty) list =
+  fun gamma -> function
   | G.Exp e ->
      let f, t = translate_exp gamma e in (C.Exp f, [("-", t)])
   | G.LetDecl bindings ->

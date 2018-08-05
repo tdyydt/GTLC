@@ -8,8 +8,8 @@ let tyerr s = raise (Typing_error s)
 
 type tyenv = ty Environment.t
 
-(* ty -> ty -> bool *)
-let rec are_consistent t1 t2 = match (t1,t2) with
+let rec are_consistent (t1 : ty) (t2 : ty) : bool =
+  match (t1,t2) with
   | (TyDyn, _) -> true
   | (_, TyDyn) -> true
   | (TyInt, TyInt) -> true
@@ -18,14 +18,14 @@ let rec are_consistent t1 t2 = match (t1,t2) with
      are_consistent t11 t21 && are_consistent t12 t22
   | (_, _) -> false
 
-(* ty -> (ty * ty) option *)
-let matching_fun = function
+let matching_fun : ty -> (ty * ty) option = function
   | TyFun (t1, t2) -> Some (t1, t2)
   | TyDyn -> Some (TyDyn, TyDyn)
   | _ -> None                   (* means matching error *)
 
 (* return more dynamic type of two *)
-let rec meet t1 t2 = match (t1, t2) with
+(* NOTE: Not used for now *)
+let rec meet (t1 : ty) (t2 : ty) : ty = match (t1, t2) with
   | t1, t2 when t1 = t2 -> t1
   | TyDyn, t | t, TyDyn -> t
   | TyFun (t11, t12), TyFun (t21, t22) ->
@@ -34,16 +34,14 @@ let rec meet t1 t2 = match (t1, t2) with
   | _, _ -> tyerr "meet is undefined"
 
 (* type of binOp *)
-(* binOp -> ty * ty * ty *)
-let ty_binop = function
+let ty_binop : binOp -> ty * ty * ty = function
   | (Plus | Minus | Mult | Div) -> (TyInt, TyInt, TyInt)
   | (Lt | Gt | Eq | LE | GE) -> (TyInt, TyInt, TyBool)
   | (LAnd | LOr) -> (TyBool, TyBool, TyBool)
 
 
 (* TODO: Rename to G.ty_exp & Add C.ty_exp *)
-(* ty Environment.t -> exp -> ty *)
-let rec ty_exp gamma = function
+let rec ty_exp : tyenv -> exp -> ty = fun gamma -> function
   | Var x ->
      (try
         let t = Environment.find x gamma in t
@@ -117,8 +115,8 @@ and ty_rec_bindings : tyenv -> (id * id * ty * ty * exp) list -> tyenv * (id * t
     bindings;
   (gamma1, ty_bindings)
 
-(* tyenv -> program -> tyenv * (id * ty) list *)
-let ty_prog gamma = function
+let ty_prog : tyenv -> program -> tyenv * (id * ty) list =
+  fun gamma -> function
   | Exp e ->
      let t = ty_exp gamma e in (gamma, [("-", t)])
   | LetDecl bindings ->
