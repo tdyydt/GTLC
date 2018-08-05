@@ -26,9 +26,7 @@ type value =
   | BoolV of bool
   (* Function closure consists of function name, body,
    * and environment, which contains values of free variables *)
-  | FunV of id * exp * env
-  (* RecFunV (x,y,e,E) ==> (E)[rec x(y) = e] *)
-  | RecFunV of id * id * exp * env
+  | FunV of id * exp * (env ref)
   (* Wrapped function:
    * Wrapped (v,t1,t2,t3,t4) ==> [v: (t1 -> t2) => (t3 -> t4)] *)
   | Wrapped of value * ty * ty * ty * ty
@@ -41,7 +39,6 @@ let rec string_of_value = function
   | IntV n -> string_of_int n
   | BoolV b -> string_of_bool b
   | FunV _ -> "<fun>"
-  | RecFunV _ -> "<rec>"        (* or <fun> *)
   (* Wrapped, Tagged のネストはあるか？ *)
   | Wrapped (v, t1, t2, t3, t4) ->
      (* How should wrapped functions be displayed? *)
@@ -97,16 +94,20 @@ let rec eval_exp : env -> exp -> value = fun env -> function
      let env' = Environment.add_all val_bindings env in
      eval_exp env' f2
 
-  | FunExp (x, _, f) -> FunV (x, f, env)
+  | FunExp (x, _, f) -> FunV (x, f, ref env)
   | AppExp (f1, f2) ->
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
      eval_app v1 v2
-  (* | LetRecExp (bindings, f2) ->
- *      let val_bindings =
- *        List.map (fun (x,y,t1,t2,f1) ->
- *            (x, RecFunV (x,y,f1,env))
- * ) *)
+  | LetRecExp (bindings, f2) ->
+     let dummy_env = ref Environment.empty in
+     let val_bindings =
+       List.map (fun (x,y,_,_,f1) -> (x, FunV (y,f1,dummy_env)))
+         bindings in
+     (* Overwrite dummy_env *)
+     let new_env = Environment.add_all val_bindings env in
+     dummy_env := new_env;
+     eval_exp new_env f2
 
   | CastExp (f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2
@@ -115,10 +116,7 @@ let rec eval_exp : env -> exp -> value = fun env -> function
 and eval_app (v1 : value) (v2 : value) : value = match v1 with
   | FunV (x, body, fun_env) ->
      (* [(fun (x:_) -> body) v2] *)
-     eval_exp (Environment.add x v2 fun_env) body
-  | RecFunV (x, y, f0, env0) ->
-     let env = Environment.add y v2 (Environment.add x v1 env0) in
-     eval_exp env f0
+     eval_exp (Environment.add x v2 !fun_env) body
   (* Wrap (AppCast) *)
   | Wrapped (v1', t1, t2, t3, t4) ->
      (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
@@ -183,3 +181,11 @@ let eval_prog : env -> program -> env * (id * value) list =
          bindings in
      let env' = Environment.add_all val_bindings env in
      (env', val_bindings)
+  | LetRecDecl bindings ->
+     let dummy_env = ref Environment.empty in
+     let val_bindings =
+       List.map (fun (x,y,_,_,f1) -> (x, FunV (y,f1,dummy_env)))
+         bindings in
+     let new_env = Environment.add_all val_bindings env in
+     dummy_env := new_env;
+     (new_env, val_bindings)
