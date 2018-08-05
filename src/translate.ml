@@ -12,8 +12,8 @@ let cast_opt (f : C.exp) (t1 : ty) (t2 : ty) : C.exp =
   else C.CastExp (f,t1,t2)
 
 (* cast insertion [G |- e ~> f : T] *)
-let rec translate_exp : tyenv -> G.exp -> C.exp * ty =
-  fun gamma -> function
+let rec translate_exp : tyenv -> G.exp -> C.exp * ty = fun gamma ->
+  function
   | G.Var x ->
      (try
         let t = Environment.find x gamma in (C.Var x, t)
@@ -97,7 +97,8 @@ and translate_rec_bindings : tyenv -> (id * id * ty * ty * G.exp) list -> (id * 
 
 
 let translate_prog : tyenv -> G.program -> C.program * (id * ty) list =
-  fun gamma -> function
+  fun gamma ->
+  function
   | G.Exp e ->
      let f, t = translate_exp gamma e in (C.Exp f, [("-", t)])
   | G.LetDecl bindings ->

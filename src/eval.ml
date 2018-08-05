@@ -69,7 +69,8 @@ let eval_binop (op : binOp) (v1 : value) (v2 : value) : value =
      everr ("Both arguments must be boolean: " ^ string_of_binop op)
 
 (* Big-step evaluation *)
-let rec eval_exp : env -> exp -> value = fun env -> function
+let rec eval_exp : env -> exp -> value = fun env ->
+  function
   | Var x ->
      (try
         let v = Environment.find x env in v
@@ -172,8 +173,8 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) : value =
   | _, _ -> everr "Should not happen"
 
 
-let eval_prog : env -> program -> env * (id * value) list =
-  fun env -> function
+let eval_prog : env -> program -> env * (id * value) list = fun env ->
+  function
   | Exp f -> let v = eval_exp env f in (env, [("-", v)])
   | LetDecl bindings ->
      let val_bindings =
