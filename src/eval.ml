@@ -16,6 +16,10 @@ let string_of_tag = function
   | BoolT -> "bool"
   | FunT -> "? -> ?"
 
+(* Blame(tag1, tag2):
+ * The value has been tagged as tag1, but is being untagged as tag2 *)
+exception Blame of tag * tag
+
 (* exval, dnval *)
 type value =
   | IntV of int
@@ -97,9 +101,31 @@ let rec eval_exp env = function
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
      eval_app v1 v2
-  | FixExp (x, y, _, _, f1) -> RecFunV (x, y, f1, env)
+  (* | LetRecExp (bindings, f2) ->
+ *      let val_bindings =
+ *        List.map (fun (x,y,t1,t2,f1) ->
+ *            (x, RecFunV (x,y,f1,env))
+ * ) *)
+
   | CastExp (f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2
+
+(* evaluate application [v1 v2] *)
+(* value -> value -> value *)
+and eval_app v1 v2 = match v1 with
+  | FunV (x, body, fun_env) ->
+     (* [(fun (x:_) -> body) v2] *)
+     eval_exp (Environment.add x v2 fun_env) body
+  | RecFunV (x, y, f0, env0) ->
+     let env = Environment.add y v2 (Environment.add x v1 env0) in
+     eval_exp env f0
+  (* Wrap (AppCast) *)
+  | Wrapped (v1', t1, t2, t3, t4) ->
+     (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
+      * [(v1' (v2: t3 => t1)): t2 => t4] *)
+     let v2' = eval_cast v2 t3 t1 in
+     let v' = eval_app v1' v2' in eval_cast v' t2 t4
+  | _ -> everr "EvalApp: Non-function value is applied"
 
 (* evaluate cast [v: t1 => t2] *)
 (* value -> ty -> ty -> value *)
@@ -115,54 +141,37 @@ and eval_cast v t1 t2 = match (t1, t2) with
   (* Ground; decompose cast *)
   | TyFun (t11, t12), TyDyn ->
      (* [(v: (t11 -> t12) => (? -> ?)): (? -> ?) => ?] *)
-     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn) in Tagged (FunT, v')
+     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn)
+     in Tagged (FunT, v')
 
   (* either Succeed (Collapse), or Fail (Conflict) *)
   | TyDyn, TyInt ->
      (match v with
       (* [v': int => ? => int] --> v' *)
       | Tagged (IntT, v') -> v'
-      | Tagged (_, _) -> everr "Blame: Fail int"
+      | Tagged (tag, _) -> raise (Blame (tag, IntT))
       | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyBool ->
      (match v with
       | Tagged (BoolT, v') -> v'
-      | Tagged (_, _) -> everr "Blame: Fail bool"
+      | Tagged (tag, _) -> raise (Blame (tag, BoolT))
       | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyFun (TyDyn, TyDyn) ->
      (match v with
       | Tagged (FunT, v') -> v'
-      | Tagged (_, _) -> everr "Blame: Fail fun"
+      | Tagged (tag, _) -> raise (Blame (tag, FunT))
       (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
       | _ -> everr "Should not happen: Untagged value")
 
   (* Expand *)
-  (* When does this happen? *)
-  | TyDyn, TyFun (t21, t22) ->
-     (* t21, t22 がともに ? ではない *)
+  | TyDyn, TyFun (t21, t22) ->  (* Not both t21 and t22 is TyDyn *)
      (* [v: ? => (t21 -> t22)] -->
       * [(v: ? => (? -> ?)): (? -> ?) => (t21 -> t22)] *)
-     let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn)) in
-     Wrapped (v', TyDyn, TyDyn, t21, t22)
+     let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn))
+     in Wrapped (v', TyDyn, TyDyn, t21, t22)
 
-  | _, _ -> everr "Should be typing error (or maybe not implemented?)"
-
-(* evaluate application [v1 v2] *)
-(* value -> value -> value *)
-and eval_app v1 v2 = match v1 with
-  | FunV (x, body, fun_env) ->
-     (* [(fun (x:_) -> body) v2] *)
-     eval_exp (Environment.add x v2 fun_env) body
-  | RecFunV (x, y, f0, env0) ->
-     let env = (Environment.add y v2 (Environment.add x v1 env0)) in
-     eval_exp env f0
-  (* Wrap (AppCast) *)
-  | Wrapped (v1', t1, t2, t3, t4) ->
-     (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
-      * [(v1' (v2: t3 => t1)): t2 => t4] *)
-     let v2' = eval_cast v2 t3 t1 in
-     let v' = eval_app v1' v2' in eval_cast v' t2 t4
-  | _ -> everr "EvalApp: Non-function value is applied"
+  (* The remaining cases should have been rejected as static type error *)
+  | _, _ -> everr "Should not happen"
 
 
 (* env -> program -> env * (id * value) list *)

@@ -43,7 +43,12 @@ let rec read_eval_print gamma env =
      print_string s;
      print_newline ();
      read_eval_print gamma env
-  (* TODO: improve error message *)
+  | Blame (tag1, tag2) ->
+     printf "Blame: %s is incompatible with tag %s"
+       (string_of_tag tag2) (string_of_tag tag1);
+     print_newline ();
+     read_eval_print gamma env
+  (* TODO: Get error message by Menhir? *)
   | Parsing.Parse_error ->      (* Menhir *)
      print_string "Parse_error.";
      print_newline ();
