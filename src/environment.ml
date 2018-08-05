@@ -18,3 +18,9 @@ let remove x env = M.remove x env
 let find x env = M.find x env
 
 let mem = M.mem
+
+(* extend env with each binding *)
+let add_all bindings env =
+  List.fold_left (fun env_acc (x,v) ->
+      add x v env_acc)
+    env bindings

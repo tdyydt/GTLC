@@ -11,6 +11,7 @@ let reservedWords = [
   ("let", P.LET);               (* let *)
   ("in", P.IN);
   ("rec", P.REC);
+  ("and", P.AND);
   (* ("match", P.MATCH);           (\* match *\)
    * ("with", P.WITH); *)
   ("int", P.INT);               (* Types *)
