@@ -3,6 +3,8 @@ open Syntax.C
 open Stringify
 open Printf
 
+(* Eval_error is an implementation error
+ * because static typing should have rejected them *)
 exception Eval_error of string
 let everr s = raise (Eval_error s)
 

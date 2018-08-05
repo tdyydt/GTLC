@@ -2,7 +2,9 @@ open Typing
 open Syntax
 
 (* cast-insertion translation *)
-(* cast-insertion should not result in error *)
+
+(* CI_error is an implementation error
+ * because static typing should have rejected them *)
 exception CI_error of string
 let err s = raise (CI_error s)  (* implementation bug *)
 
