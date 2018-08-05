@@ -1,6 +1,5 @@
-open Syntax
-open Util
 open Typing
+open Syntax
 
 (* cast-insertion translation *)
 (* cast-insertion should not result in error *)
