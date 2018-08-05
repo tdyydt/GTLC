@@ -25,7 +25,7 @@ let rec read_eval_print gamma env =
     (* check soundness *)
     assert (ty_bindings = ty_bindings');
     (* result of translation *)
-    (* print_string (C.string_of_program q); *)
+    print_string (C.string_of_program q);
     print_newline ();
 
     (* Eval *)
