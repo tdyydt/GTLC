@@ -1,5 +1,5 @@
 open OUnit2
-open Syntax.G
+open Stringify.G
 
 (* test stringify *)
 
@@ -7,14 +7,15 @@ open Syntax.G
 let test_string_of_exp =
   let test input =
     input >:: fun test_ctxt ->
+              (* parseして，構文木を文字列化したらもとに戻るか *)
               let p = Parser.toplevel Lexer.main (Lexing.from_string (input ^ ";;")) in
               let s = string_of_program p in
               assert_equal input s
   in
   List.map test [
       (* 入力のスペースに気を付ける *)
-      (* syntax sugar が含まれると，この単純な方法ではダメ *)
-      (* Note some of test inputs are semantically incorrect... *)
+      (* syntax sugar が含まれる場合は，元と同じにならないので，結果も指定する
+       * ようなテストを作る必要がある *)
       "1 + 2";
       "3 - 1";                  (* not AppExp(3,-1) *)
       "1 + 2 + 3";              (* left assoc *)
@@ -44,6 +45,7 @@ let test_string_of_exp =
        * "(1 + 2) : int => ?";
        * "1 + (x : ? => int)"; *)
 
+      (* f is not bound, but ok in this test *)
       "f 5";
       "f 10 5";
       "f 10 (id 5)";

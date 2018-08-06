@@ -1,6 +1,7 @@
 open OUnit2
 open Syntax
-open Typing
+open Typing.G
+open Stringify
 
 (* TODO: include tests for evaluation *)
 
@@ -19,6 +20,7 @@ let test_ty_exp =
   List.map test [
       "(fun (x:?) -> x + 3) true", "int";
       "(fun (x:?) -> x) true", "?";
+      "let rec fact (n:?) : int = if n < 2 then 1 else n * fact(n-1) in fact 5", "int";
     ]
 
 (* Typing Error になる入力の検証 *)
