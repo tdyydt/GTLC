@@ -1,6 +1,7 @@
 open Printf
 open Syntax
 open Typing
+open Typing.G
 open Translate
 open Eval
 open Stringify
@@ -9,10 +10,10 @@ let rec read_eval_print gamma env =
   print_string "# ";
   flush stdout;
   try
-    let p : Syntax.G.program =
-      Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
+    (* p : Syntax.G.program *)
+    let p = Parser.toplevel Lexer.main (Lexing.from_channel stdin) in
     print_string "[Typing]\n";
-    let (gamma', ty_bindings) = Typing.G.ty_prog gamma p in
+    let (gamma', ty_bindings) = ty_prog gamma p in
     List.iter (fun (x,t) ->
         printf "val %s : %s" x (string_of_ty t);
         print_newline ())
