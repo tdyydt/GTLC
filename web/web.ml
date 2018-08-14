@@ -33,9 +33,11 @@ let _ =
               let env = Environment.empty in
               (try
                  let v = eval_exp env f in
+                 let res = sprintf "val - : %s = %s"
+                             (string_of_ty t) (string_of_value v) in
                  object%js
                    val status = 0
-                   val detail = emptystr
+                   val detail = Js.string res
                    val t = Js.string (string_of_ty t)
                    val f = Js.string (C.string_of_exp f)
                    val v = Js.string (string_of_value v)
