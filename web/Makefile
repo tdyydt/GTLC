@@ -6,3 +6,7 @@ web.byte: ../src/lib.cma web.ml
 
 gtlc.js: web.byte
 	js_of_ocaml -o $@ web.byte
+
+clean:
+	rm -f *.cm[iox]
+	rm -f gtlc.js web.byte
