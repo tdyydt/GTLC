@@ -10,7 +10,3 @@ parser.conflicts
 
 # binary
 gtlc
-test
-# OUnit
-*.log
-*.cache

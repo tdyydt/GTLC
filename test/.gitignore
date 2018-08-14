@@ -1,0 +1,6 @@
+# OUnit
+*.log
+*.cache
+
+# binary
+test
