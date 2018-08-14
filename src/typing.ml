@@ -38,25 +38,35 @@ let ty_binop : binOp -> ty * ty * ty = function
   | (Lt | Gt | Eq | LE | GE) -> (TyInt, TyInt, TyBool)
   | (LAnd | LOr) -> (TyBool, TyBool, TyBool)
 
+(* check if t1 is consistent with given type annotation t2 (if any) *)
+let check_consistent (t1 : ty) (tyopt : ty option) : ty =
+  match tyopt with
+  | Some t2 ->
+     (* t2 is type annotation given by programmer *)
+     if are_consistent t2 t1 then t2
+     else tyerr (sprintf "%s and %s are not consistent"
+                   (string_of_ty t2) (string_of_ty t1))
+  | None -> t1
 
 (* TODO: Rename to G.ty_exp & Add C.ty_exp *)
 module G = struct
   open Syntax.G
-  let rec ty_exp : tyenv -> exp -> ty = fun gamma ->
-    function
+  let rec ty_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : exp) : ty =
+    match e with
     | Var x ->
        (try
-          let t = Environment.find x gamma in t
+          let t = Environment.find x gamma in
+          check_consistent t tyopt
         with
         | Not_found -> tyerr (sprintf "GT-Var: %s is not bound" x))
-    | ILit _ -> TyInt
-    | BLit _ -> TyBool
+    | ILit _ -> check_consistent TyInt tyopt
+    | BLit _ -> check_consistent TyBool tyopt
     | BinOp (op, e1, e2) ->
        let t1 = ty_exp gamma e1 in
        let t2 = ty_exp gamma e2 in
        let (u1, u2, u3) = ty_binop op in
        if are_consistent t1 u1 then
-         if are_consistent t2 u2 then u3
+         if are_consistent t2 u2 then check_consistent u3 tyopt
          else tyerr (sprintf "GT-BinOp-R: %s and %s are not consistent"
                        (string_of_ty t2) (string_of_ty u2))
        else tyerr (sprintf "GT-BinOp-L: %s and %s are not consistent"
@@ -66,10 +76,19 @@ module G = struct
        if are_consistent t1 TyBool then
          let t2 = ty_exp gamma e2 in
          let t3 = ty_exp gamma e3 in
-         (* OR: meet t2 t3 *)
-         if t2 = t3 then t2
-         else tyerr (sprintf "GT-If: branches have different types: %s and %s"
-                       (string_of_ty t2) (string_of_ty t3))
+         (match tyopt with
+          | Some t ->           (* t is respected *)
+             if are_consistent t2 t then
+               if are_consistent t3 t then t
+               else tyerr (sprintf "GT-If: %s and %s are not consistent"
+                             (string_of_ty t3) (string_of_ty t))
+             else tyerr (sprintf "GT-If: %s and %s are not consistent"
+                           (string_of_ty t2) (string_of_ty t))
+          | None ->
+             (* OR: meet t2 t3 *)
+             if t2 = t3 then t2
+             else tyerr (sprintf "GT-If: branches have different types: %s and %s"
+                           (string_of_ty t2) (string_of_ty t3)))
        else tyerr (sprintf "GT-If-test: %s is not consistent with bool"
                      (string_of_ty t1))
 
@@ -77,17 +96,17 @@ module G = struct
        let ty_bindings =
          List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
        let gamma' = Environment.add_all ty_bindings gamma in
-       ty_exp gamma' e2
+       let t2 = ty_exp gamma' e2 in check_consistent t2 tyopt
 
     | FunExp (x, t, e) ->
        let u = ty_exp (Environment.add x t gamma) e in
-       TyFun (t,u)
+       check_consistent (TyFun (t,u)) tyopt
     | AppExp (e1, e2) ->
        let t1 = ty_exp gamma e1 in
        (match matching_fun t1 with
         | Some (t11, t12) ->
            let t2 = ty_exp gamma e2 in
-           if are_consistent t2 t11 then t12
+           if are_consistent t2 t11 then check_consistent t12 tyopt
            else tyerr (sprintf "GT-App: %s and %s are not consistent"
                          (string_of_ty t2) (string_of_ty t11))
         | None -> tyerr (sprintf "GT-App: %s is not a function type"
@@ -95,7 +114,7 @@ module G = struct
 
     | LetRecExp (bindings, e2) ->
        let gamma1, _ = ty_rec_bindings gamma bindings in
-       ty_exp gamma1 e2
+       let t2 = ty_exp gamma1 e2 in check_consistent t2 tyopt
 
   (* auxiliary function for typing LetRec bindings *)
   and ty_rec_bindings : tyenv -> (id * id * ty * ty * exp) list -> tyenv * (id * ty) list =
@@ -108,12 +127,9 @@ module G = struct
     (* まず，n個のe1を型付け・型注釈が正しいことを確認する *)
     List.iter (fun (x,y,paraty,retty,e1) ->
         let gamma2 = Environment.add y paraty gamma1 in
-        let retty' = ty_exp gamma2 e1 in
-        (* consistency rather than equality?? *)
-        if retty' = retty then ()
-        else tyerr (sprintf ("GT-LetRec: return type %s does not equal"
-                             ^^ " to the given annotation %s")
-                      (string_of_ty retty') (string_of_ty retty)))
+        (* retty is given by a programmer *)
+        let retty' = ty_exp gamma2 e1 ~tyopt:(Some retty) in
+        assert (retty = retty'))
       bindings;
     (gamma1, ty_bindings)
 
