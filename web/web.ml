@@ -20,10 +20,11 @@ let _ =
   Js.export "GTLC" @@
     object%js
       method eval input =
+        (* expressions only *)
+        let s = Js.to_string input ^ ";;" in
+        let lexbuf = Lexing.from_string s in
         try
-          (* expressions only *)
-          let s = Js.to_string input ^ ";;" in
-          let pgm = Parser.toplevel Lexer.main (Lexing.from_string s) in
+          let pgm = Parser.toplevel Lexer.main lexbuf in
           (match pgm with
            | Exp e ->
               let gamma = Environment.empty in
@@ -71,10 +72,12 @@ let _ =
              val f = emptystr
              val v = emptystr
            end
-        | Parsing.Parse_error -> (* Menhir *)
+        | Parser.Error ->       (* Menhir *)
+           let token = Lexing.lexeme lexbuf in
+           let m = sprintf "Parser.Error: unexpected token: %s\n" token in
            object%js
              val status = 1
-             val detail = emptystr
+             val detail = Js.string m
              val t = emptystr
              val f = emptystr
              val v = emptystr
@@ -114,7 +117,7 @@ let _ =
         | _ ->
            object%js
              val status = 4
-             val detail = Js.string "Unexpected error"
+             val detail = Js.string "Unexpected Error"
              val t = emptystr
              val f = emptystr
              val v = emptystr
