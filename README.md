@@ -13,7 +13,8 @@ Be aware that this implementation is incomplete.
 ## Requirements
 
 - Menhir
-- OUnit2 (only for unit testing)
+- OUnit2 (optional; for unit testing)
+- js\_of\_ocaml, js\_of\_ocaml-ppx (optional; for web)
 
 ## Build instructions
 
