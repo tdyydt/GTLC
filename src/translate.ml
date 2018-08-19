@@ -82,17 +82,18 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
   | G.FunExp (x, t, e) ->
      let f, u = translate_exp (Environment.add x t gamma) e in
      translate_aux (C.FunExp (x, t, f)) (TyFun (t, u)) tyopt
-  | G.AppExp (e1, e2) ->        (* interesting case *)
+  | G.AppExp (e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
-     (match matching_fun t1 with
-      | Some (t11, t12) ->
-         let f2, t2 = translate_exp gamma e2 in
-         if are_consistent t2 t11
-         then let f = C.AppExp (cast_opt f1 t1 (TyFun (t11, t12)),
-                                cast_opt f2 t2 t11) in
-              translate_aux f t12 tyopt
-         else err "CI-App"
-      | None -> err "CI-App: Not a function")
+     (try
+        let (t11, t12) = matching_fun t1 in
+        let f2, t2 = translate_exp gamma e2 in
+        if are_consistent t2 t11
+        then let f = C.AppExp (cast_opt f1 t1 (TyFun (t11, t12)),
+                               cast_opt f2 t2 t11) in
+             translate_aux f t12 tyopt
+        else err "CI-App"
+      with
+      | Typing_error msg -> tyerr ("CI-App: " ^ msg))
 
   | G.LetRecExp (bindings, e2) ->
      let new_bindings, gamma1, _ =

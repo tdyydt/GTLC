@@ -17,10 +17,11 @@ let rec are_consistent (t1 : ty) (t2 : ty) : bool =
      are_consistent t11 t21 && are_consistent t12 t22
   | (_, _) -> false
 
-let matching_fun : ty -> (ty * ty) option = function
-  | TyFun (t1, t2) -> Some (t1, t2)
-  | TyDyn -> Some (TyDyn, TyDyn)
-  | _ -> None                   (* means matching error *)
+let matching_fun : ty -> ty * ty = function
+  | TyFun (t1, t2) -> (t1, t2)
+  | TyDyn -> (TyDyn, TyDyn)
+  | t -> tyerr (sprintf "%s doesn't match with a function type"
+                  (string_of_ty t))
 
 (* meet wrt. precision relation: [T < ?] *)
 (* computes greatest common _static_ type of two *)
@@ -106,14 +107,14 @@ module G = struct
        check_consistent (TyFun (t,u)) tyopt
     | AppExp (e1, e2) ->
        let t1 = ty_exp gamma e1 in
-       (match matching_fun t1 with
-        | Some (t11, t12) ->
-           let t2 = ty_exp gamma e2 in
-           if are_consistent t2 t11 then check_consistent t12 tyopt
-           else tyerr (sprintf "GT-App: %s and %s are not consistent"
-                         (string_of_ty t2) (string_of_ty t11))
-        | None -> tyerr (sprintf "GT-App: %s is not a function type"
-                           (string_of_ty t1)))
+       (try
+          let (t11, t12) = matching_fun t1 in
+          let t2 = ty_exp gamma e2 in
+          if are_consistent t2 t11 then check_consistent t12 tyopt
+          else tyerr (sprintf "GT-App: %s and %s are not consistent"
+                        (string_of_ty t2) (string_of_ty t11))
+        with
+        | Typing_error msg -> tyerr ("GT-App: " ^ msg))
 
     | LetRecExp (bindings, e2) ->
        let gamma1, _ = ty_rec_bindings gamma bindings in
