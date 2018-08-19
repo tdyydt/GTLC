@@ -22,15 +22,17 @@ let matching_fun : ty -> (ty * ty) option = function
   | TyDyn -> Some (TyDyn, TyDyn)
   | _ -> None                   (* means matching error *)
 
-(* return more dynamic type of two *)
-(* NOTE: Not used for now *)
+(* meet wrt. precision relation: [T < ?] *)
+(* computes greatest common _static_ type of two *)
 let rec meet (t1 : ty) (t2 : ty) : ty = match (t1, t2) with
   | t1, t2 when t1 = t2 -> t1
-  | TyDyn, t | t, TyDyn -> t
+  | TyDyn, t -> t
+  | t, TyDyn -> t
+  (* covariant in argument type *)
   | TyFun (t11, t12), TyFun (t21, t22) ->
      TyFun (meet t11 t21, meet t12 t22)
-  (* raise error, or return optional value *)
-  | _, _ -> tyerr "meet is undefined"
+  | _ -> tyerr (sprintf "Meet is undefined: %s and %s"
+                  (string_of_ty t1) (string_of_ty t2))
 
 (* type of binOp *)
 let ty_binop : binOp -> ty * ty * ty = function
@@ -48,9 +50,11 @@ let check_consistent (t1 : ty) (tyopt : ty option) : ty =
                    (string_of_ty t2) (string_of_ty t1))
   | None -> t1
 
-(* TODO: Rename to G.ty_exp & Add C.ty_exp *)
 module G = struct
   open Syntax.G
+  (* NOTE: tyopt means the type expression that e is expected to have.
+   * It is currently used in LetRec. tyopt is None if such type
+   * is not necessary. *)
   let rec ty_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : exp) : ty =
     match e with
     | Var x ->
@@ -80,16 +84,15 @@ module G = struct
           | Some t ->           (* t is respected *)
              if are_consistent t2 t then
                if are_consistent t3 t then t
-               else tyerr (sprintf "GT-If: %s and %s are not consistent"
+               else tyerr (sprintf "GT-If-Else: %s and %s are not consistent"
                              (string_of_ty t3) (string_of_ty t))
-             else tyerr (sprintf "GT-If: %s and %s are not consistent"
+             else tyerr (sprintf "GT-If-Then: %s and %s are not consistent"
                            (string_of_ty t2) (string_of_ty t))
           | None ->
-             (* OR: meet t2 t3 *)
-             if t2 = t3 then t2
-             else tyerr (sprintf "GT-If: branches have different types: %s and %s"
-                           (string_of_ty t2) (string_of_ty t3)))
-       else tyerr (sprintf "GT-If-test: %s is not consistent with bool"
+             (try meet t2 t3
+              with
+              | Typing_error msg -> tyerr (sprintf "G-If-Br: %s" msg)))
+       else tyerr (sprintf "GT-If-Test: %s is not consistent with bool"
                      (string_of_ty t1))
 
     | LetExp (bindings, e2) ->

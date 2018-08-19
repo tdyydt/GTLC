@@ -40,8 +40,8 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
        if are_consistent t2 u2 then
          let f = C.BinOp (op, cast_opt f1 t1 u1, cast_opt f2 t2 u2) in
          translate_aux f u3 tyopt
-       else err "CI-BinOp: Should not happen"
-     else err "CI-BinOp: Should not happen"
+       else err "CI-BinOp-L"
+     else err "CI-BinOp-R"
   | G.IfExp (e1, e2, e3) ->
      let f1, t1 = translate_exp gamma e1 in
      if are_consistent t1 TyBool then
@@ -54,18 +54,17 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
                (C.IfExp (cast_opt f1 t1 TyBool,
                          cast_opt f2 t2 t,
                          cast_opt f3 t3 t), t)
-             else err "CI-If: Something went wrong"
-           else err "CI-If: Something went wrong"
+             else err "CI-If-Else"
+           else err "CI-If-Then"
         | None ->
-           (* OR:
-            * let u = meet t2 t3 in
-            * (C.IfExp (cast_opt f1 t1 TyBool,
-            *           cast_opt f2 t2 u,
-            *           cast_opt f3 t3 u), u) *)
-           if t2 = t3 then
-             (C.IfExp (cast_opt f1 t1 TyBool, f2, f3), t2)
-           else err "CI-If-branches: Should not happen")
-     else err "CI-If-test: Should not happen"
+           (try
+              let u = meet t2 t3 in
+              (C.IfExp (cast_opt f1 t1 TyBool,
+                        cast_opt f2 t2 u,
+                        cast_opt f3 t3 u), u)
+            with
+            | Typing_error msg -> err ("CI-If-Br: " ^ msg)))
+     else err "CI-If-Test"
   | G.LetExp (bindings, e2) ->
      let new_bindings =
        List.map (fun (x,e1) ->
@@ -92,7 +91,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
          then let f = C.AppExp (cast_opt f1 t1 (TyFun (t11, t12)),
                                 cast_opt f2 t2 t11) in
               translate_aux f t12 tyopt
-         else err "CI-App: Should not happen"
+         else err "CI-App"
       | None -> err "CI-App: Not a function")
 
   | G.LetRecExp (bindings, e2) ->
