@@ -108,7 +108,10 @@ expr :
 
 (* `n-1` should be BinOp(Minus, n, 1), not App(n, -1) *)
 minus_expr :
-  | MINUS e=minus_expr { BinOp (Minus, ILit 0, e) }
+  | MINUS e=minus_expr
+    { match e with
+      | ILit n -> ILit (-n)
+      | e -> BinOp (Minus, ILit 0, e) }
   | e=app_expr { e }
 
 (* To avoid conflicts *)
