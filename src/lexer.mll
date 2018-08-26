@@ -54,6 +54,7 @@ rule main = parse
       with
       _ -> P.ID id
      }
+| eof { exit 0 }
 
 and comment level = parse
 | "*)" {
