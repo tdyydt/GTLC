@@ -10,7 +10,7 @@ PROGNAME=gtlc
 OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo \
      typing.cmo	translate.cmo eval.cmo
 
-# DEPEND += lexer.ml parser.ml
+DEPEND += lexer.ml parser.ml
 
 all: $(PROGNAME)
 
@@ -32,7 +32,7 @@ lib.cma: $(DEPEND) $(OBJS)
 
 
 # parser & lexer
-parser.ml parser.mli: parser.mly
+parser.ml parser.mli: parser.mly syntax.cmo
 	@rm -f $@
 	$(MENHIR) $(MENHIROPTIONS) -v $<
 	@chmod -w $@
