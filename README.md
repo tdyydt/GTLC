@@ -1,5 +1,7 @@
 # Interpreter of GTLC
 
+[![Build Status](https://travis-ci.org/tdyydt/GTLC.svg?branch=master)](https://travis-ci.org/tdyydt/GTLC)
+
 This is an interpreter of Gradually Typed Lambda Calculus (GTLC).
 
 The interpreter consists of three parts:
