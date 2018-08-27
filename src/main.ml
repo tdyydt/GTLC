@@ -1,7 +1,6 @@
 open Printf
 open Syntax
 open Typing
-open Typing.G
 open Translate
 open Eval
 open Stringify
@@ -11,26 +10,29 @@ let rec read_eval_print gamma env =
   flush stdout;
   let lexbuf = Lexing.from_channel stdin in
   try
-    (* p : Syntax.G.program *)
-    let p = Parser.toplevel Lexer.main lexbuf in
-    print_string "[Typing]\n";
-    let (gamma', ty_bindings) = ty_prog gamma p in
+    let open Syntax in
+    let p : G.program = Parser.toplevel Lexer.main lexbuf in
+    print_string "*** Typing ***\n";
+    let open Typing in
+    let (gamma', ty_bindings) = G.ty_prog gamma p in
+    let open Stringify in
     List.iter (fun (x,t) ->
         printf "val %s : %s\n" x (string_of_ty t))
       ty_bindings;
 
     (* Cast-Insertion Translation *)
-    print_string "[Translation]\n";
-    (* q : Syntax.C.program *)
-    let (q, ty_bindings') = translate_prog gamma p in
+    print_string "*** Cast Insertion ***\n";
+    let open Syntax in
+    let ((q : C.program), ty_bindings') = translate_prog gamma p in
     (* check soundness *)
     assert (ty_bindings = ty_bindings');
     (* result of translation *)
+    let open Stringify in
     print_string (C.string_of_program q);
     print_newline ();
 
     (* Eval *)
-    print_string "[Evaluation]\n";
+    print_string "*** Evaluation ***\n";
     let (env', val_bindings) = eval_prog env q in
     List.iter2 (fun (x,t) (x',v) ->
         assert (x' = x);
