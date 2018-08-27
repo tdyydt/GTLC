@@ -1,21 +1,22 @@
 open OUnit2
-open Stringify.G
+open Stringify
 
-(* test stringify *)
+(* test parser and G.string_of_exp *)
+(* because I don't have parser for C.exp now *)
 
-(* C.string_of_exp (と parser) の正しさ *)
 let test_string_of_exp =
   let test input =
     input >:: fun test_ctxt ->
-              (* parseして，構文木を文字列化したらもとに戻るか *)
-              let p = Parser.toplevel Lexer.main (Lexing.from_string (input ^ ";;")) in
-              let s = string_of_program p in
+              (* if you parse input, then stringify it,
+               * the string should be same as input. *)
+              (* it is also possible to parse again the final string?? *)
+              let lexbuf = Lexing.from_string (input ^ ";;") in
+              let p = Parser.toplevel Lexer.main lexbuf in
+              let s = G.string_of_program p in
               assert_equal input s
   in
   List.map test [
-      (* 入力のスペースに気を付ける *)
-      (* syntax sugar が含まれる場合は，元と同じにならないので，結果も指定する
-       * ようなテストを作る必要がある *)
+      (* Take care of parentheses and whitespaces and syntax sugar *)
       "1 + 2";
       "3 - 1";                  (* not AppExp(3,-1) *)
       "1 + 2 + 3";              (* left assoc *)
@@ -38,7 +39,6 @@ let test_string_of_exp =
       "let x = (let y = 3 in y) in x";
 
       "if true then 1 + 3 else f 5";
-
 
       (* "x : int => ?";
        * (\* "1 + 2 : int => ?";       (\\* same as: (1 + 2) : int => ? *\\) *\)
