@@ -6,9 +6,9 @@ This is an interpreter of Gradually Typed Lambda Calculus (GTLC).
 
 The interpreter consists of three parts:
 
-- Type checking (`src/typing.ml`)
-- Cast insertion (`src/translate.ml`)
-- Evaluation (`src/eval.ml`)
+- Type checking: [src/typing.ml](src/typing.ml)
+- Cast insertion: [src/translate.ml](src/translate.ml)
+- Evaluation: [src/eval.ml](src/eval.ml)
 
 Be aware that this implementation is incomplete.
 
