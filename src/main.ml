@@ -4,6 +4,7 @@ open Typing
 open Translate
 open Eval
 open Stringify
+open Util.Error
 
 let rec read_eval_print gamma env =
   print_string "# ";
@@ -54,7 +55,9 @@ let rec read_eval_print gamma env =
      print_string s;
      print_newline ();
      read_eval_print gamma env
-  | Blame (tag1, tag2) ->
+  | Blame (r, tag1, tag2) ->
+     print_range r;
+     print_newline ();
      printf "Blame: %s is incompatible with tag %s\n"
        (string_of_tag tag2) (string_of_tag tag1);
      read_eval_print gamma env

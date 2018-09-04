@@ -29,4 +29,11 @@ module Error = struct
       end_p=r2.end_p;
     }
 
+  let print_range { start_p=p1; end_p=p2 } =
+    Printf.printf "line %d, character %d -- line %d, character %d"
+      p1.pos_lnum
+      (p1.pos_cnum - p1.pos_bol)
+      p2.pos_lnum
+      (p2.pos_cnum - p2.pos_bol)
+
 end

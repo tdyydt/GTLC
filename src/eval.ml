@@ -2,6 +2,7 @@ open Syntax
 open Syntax.C
 open Stringify
 open Printf
+open Util.Error
 
 (* Eval_error is an implementation error
  * because static typing should have rejected them *)
@@ -20,7 +21,7 @@ let string_of_tag = function
 
 (* Blame(tag1, tag2):
  * The value has been tagged as tag1, but is being untagged as tag2 *)
-exception Blame of tag * tag
+exception Blame of range * tag * tag
 
 (* exval, dnval *)
 type value =
@@ -30,8 +31,9 @@ type value =
    * and environment, which contains values of free variables *)
   | FunV of id * exp * (env ref)
   (* Wrapped function:
-   * Wrapped (v,t1,t2,t3,t4) ==> [v: (t1 -> t2) => (t3 -> t4)] *)
-  | Wrapped of value * ty * ty * ty * ty
+   * Wrapped (v,t1,t2,t3,t4,r) ==> [v: (t1 -> t2) => (t3 -> t4)]
+   * Besides, r is blame label *)
+  | Wrapped of value * ty * ty * ty * ty * range
   (* Tagged value, aka Injection:
    * Tagged (G, v) ==> [v: G => ?] *)
   | Tagged of tag * value
@@ -42,7 +44,7 @@ let rec string_of_value = function
   | BoolV b -> string_of_bool b
   | FunV _ -> "<fun>"
   (* Wrapped, Tagged のネストはあるか？ *)
-  | Wrapped (v, t1, t2, t3, t4) ->
+  | Wrapped (v, t1, t2, t3, t4, _) ->
      (* How should wrapped functions be displayed? *)
      sprintf "(%s : %s -> %s => %s -> %s)"
        (string_of_value v) (string_of_ty t1) (string_of_ty t2)
@@ -113,7 +115,7 @@ let rec eval_exp : env -> exp -> value = fun env ->
      eval_exp new_env f2
 
   | CastExp (r, f, t1, t2) ->
-     let v = eval_exp env f in eval_cast v t1 t2
+     let v = eval_exp env f in eval_cast v t1 t2 r
 
 (* evaluate application [v1 v2] *)
 and eval_app (v1 : value) (v2 : value) : value = match v1 with
@@ -121,15 +123,16 @@ and eval_app (v1 : value) (v2 : value) : value = match v1 with
      (* [(fun (x:_) -> body) v2] *)
      eval_exp (Environment.add x v2 !fun_env) body
   (* Wrap (AppCast) *)
-  | Wrapped (v1', t1, t2, t3, t4) ->
+  | Wrapped (v1', t1, t2, t3, t4, r) ->
      (* [(v1': t1 -> t2 => t3 -> t4) v2] -->
       * [(v1' (v2: t3 => t1)): t2 => t4] *)
-     let v2' = eval_cast v2 t3 t1 in
-     let v' = eval_app v1' v2' in eval_cast v' t2 t4
+     let v2' = eval_cast v2 t3 t1 r in
+     let v' = eval_app v1' v2' in eval_cast v' t2 t4 r
   | _ -> everr "EvalApp: Non-function value is applied"
 
-(* evaluate cast [v: t1 => t2] *)
-and eval_cast (v : value) (t1 : ty) (t2 : ty) : value =
+(* evaluate cast [v: t1 => t2]
+ * Besides, r is blame label *)
+and eval_cast (v : value) (t1 : ty) (t2 : ty) (r : range) : value =
   match (t1, t2) with
   (* IdBase *)
   | TyInt, TyInt -> v
@@ -142,7 +145,7 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) : value =
   (* Ground; decompose cast *)
   | TyFun (t11, t12), TyDyn ->
      (* [(v: (t11 -> t12) => (? -> ?)): (? -> ?) => ?] *)
-     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn)
+     let v' = Wrapped (v, t11, t12, TyDyn, TyDyn, r)
      in Tagged (FunT, v')
 
   (* either Succeed (Collapse), or Fail (Conflict) *)
@@ -150,17 +153,17 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) : value =
      (match v with
       (* [v': int => ? => int] --> v' *)
       | Tagged (IntT, v') -> v'
-      | Tagged (tag, _) -> raise (Blame (tag, IntT))
+      | Tagged (tag, _) -> raise (Blame (r, tag, IntT))
       | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyBool ->
      (match v with
       | Tagged (BoolT, v') -> v'
-      | Tagged (tag, _) -> raise (Blame (tag, BoolT))
+      | Tagged (tag, _) -> raise (Blame (r, tag, BoolT))
       | _ -> everr "Should not happen: Untagged value")
   | TyDyn, TyFun (TyDyn, TyDyn) ->
      (match v with
       | Tagged (FunT, v') -> v'
-      | Tagged (tag, _) -> raise (Blame (tag, FunT))
+      | Tagged (tag, _) -> raise (Blame (r, tag, FunT))
       (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
       | _ -> everr "Should not happen: Untagged value")
 
@@ -168,8 +171,8 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) : value =
   | TyDyn, TyFun (t21, t22) ->  (* Not both t21 and t22 is TyDyn *)
      (* [v: ? => (t21 -> t22)] -->
       * [(v: ? => (? -> ?)): (? -> ?) => (t21 -> t22)] *)
-     let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn))
-     in Wrapped (v', TyDyn, TyDyn, t21, t22)
+     let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn)) r
+     in Wrapped (v', TyDyn, TyDyn, t21, t22, r)
 
   (* The remaining cases should have been rejected as static type error *)
   | _, _ -> everr "Should not happen"
