@@ -1,22 +1,30 @@
 {
 module P = Parser
+open Util.Error
+
 let reservedWords = [
   (* Keywords *)
-  ("true", P.TRUE);
-  ("false", P.FALSE);
-  ("fun", P.FUN);
-  ("if", P.IF);                 (* if *)
-  ("then", P.THEN);
-  ("else", P.ELSE);
-  ("let", P.LET);               (* let *)
-  ("in", P.IN);
-  ("rec", P.REC);
-  ("and", P.AND);
+  ("true", fun r -> P.TRUE r);
+  ("false", fun r -> P.FALSE r);
+  ("fun", fun r -> P.FUN r);
+  ("if", fun r -> P.IF r);      (* if *)
+  ("then", fun r -> P.THEN r);
+  ("else", fun r -> P.ELSE r);
+  ("let", fun r -> P.LET r);    (* let *)
+  ("in", fun r -> P.IN r);
+  ("rec", fun r -> P.REC r);
+  ("and", fun r -> P.AND r);
   (* ("match", P.MATCH);           (\* match *\)
    * ("with", P.WITH); *)
-  ("int", P.INT);               (* Types *)
-  ("bool", P.BOOL);
+  ("int", fun r -> P.INT r);    (* Types *)
+  ("bool", fun r -> P.BOOL r);
 ]
+
+(* range_of_lexbuf *)
+let range_of lexbuf = {
+    start_p=Lexing.lexeme_start_p lexbuf;
+    end_p=Lexing.lexeme_end_p lexbuf;
+  }
 }
 
 (* '\012' は10進で，Form Feed (\f) を表す *)
@@ -26,33 +34,36 @@ let space = [' ' '\t' '\012' '\n']
 rule main = parse
 | space+ { main lexbuf }
 | ['0'-'9']+
-    { P.INTV (int_of_string (Lexing.lexeme lexbuf)) }
+    { let r = range_of lexbuf in
+      let i = int_of_string (Lexing.lexeme lexbuf) in
+      P.INTV { value=i; range=r} }
 
 | "(*" { comment 0 lexbuf }     (* Entering comment mode *)
-| "(" { P.LPAREN }
-| ")" { P.RPAREN }
-| ";;" { P.SEMISEMI }
-| "+" { P.PLUS }                (* arith *)
-| "-" { P.MINUS }
-| "*" { P.MULT }
-| "/" { P.DIV }
-| "&&" { P.LAND }               (* logical *)
-| "||" { P.LOR }
-| "<" { P.LT }                  (* relational *)
-| ">" { P.GT }
-| "<=" { P.LE }
-| ">=" { P.GE }
-| "=" { P.EQ }                  (* let, relational *)
-| "->" { P.RARROW }
-| "?" { P.QU }                  (* the unknown type *)
-| ":" { P.COLON }               (* type annot *)
+| "(" { P.LPAREN (range_of lexbuf) }
+| ")" { P.RPAREN (range_of lexbuf) }
+| ";;" { P.SEMISEMI (range_of lexbuf) }
+| "+" { P.PLUS (range_of lexbuf) } (* arith *)
+| "-" { P.MINUS (range_of lexbuf) }
+| "*" { P.MULT (range_of lexbuf) }
+| "/" { P.DIV (range_of lexbuf) }
+| "&&" { P.LAND (range_of lexbuf) } (* logical *)
+| "||" { P.LOR (range_of lexbuf) }
+| "<" { P.LT (range_of lexbuf) } (* relational *)
+| ">" { P.GT (range_of lexbuf) }
+| "<=" { P.LE (range_of lexbuf) }
+| ">=" { P.GE (range_of lexbuf) }
+| "=" { P.EQ (range_of lexbuf) } (* let, relational *)
+| "->" { P.RARROW (range_of lexbuf) }
+| "?" { P.QU (range_of lexbuf) } (* the unknown type *)
+| ":" { P.COLON (range_of lexbuf) } (* type annot *)
 
 | ['a'-'z'] ['a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
+      let r = range_of lexbuf in
       try
-        List.assoc id reservedWords
+        (List.assoc id reservedWords) r
       with
-      _ -> P.ID id
+      _ -> P.ID { value=id; range=r }
      }
 | eof { exit 0 }
 

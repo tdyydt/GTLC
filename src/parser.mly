@@ -4,17 +4,17 @@ open Syntax.G
 open Printf
 %}
 
-%token LPAREN RPAREN SEMISEMI
-%token PLUS MINUS MULT DIV
-%token LT GT LE GE LAND LOR
-%token IF THEN ELSE TRUE FALSE
-%token LET IN EQ REC AND
-%token RARROW FUN
-%token INT BOOL QU              (* Types *)
-%token COLON
+%token <Util.Error.range> LPAREN RPAREN SEMISEMI
+%token <Util.Error.range> PLUS MINUS MULT DIV
+%token <Util.Error.range> LT GT LE GE LAND LOR
+%token <Util.Error.range> IF THEN ELSE TRUE FALSE
+%token <Util.Error.range> LET IN EQ REC AND
+%token <Util.Error.range> RARROW FUN
+%token <Util.Error.range> INT BOOL QU              (* Types *)
+%token <Util.Error.range> COLON
 
-%token <int> INTV
-%token <Syntax.id> ID
+%token <int Util.Error.with_range> INTV
+%token <Syntax.id Util.Error.with_range> ID
 
 (* precedence: lower to higher *)
 (* via: https://caml.inria.fr/pub/docs/manual-ocaml/expr.html *)
@@ -42,8 +42,8 @@ program :
 
 (* parameter *)
 para :
-  | LPAREN x=ID COLON t=ty RPAREN { (x,t) }
-  | x=ID { err (sprintf "Type annotation for %s is mandatory." x) }
+  | LPAREN x=ID COLON t=ty RPAREN { (x.value,t) }
+  | x=ID { err (sprintf "Type annotation for %s is mandatory." x.value) }
 
 (* x = e *)
 let_binding :
@@ -54,7 +54,7 @@ let_binding :
                  (* acc for accumulator *)
                  (fun (x,t) e_acc -> FunExp (x, t, e_acc))
                  paras e
-      in (x, e') }
+      in (x.value, e') }
 
 (* f (x:S) : T = e *)
 rec_binding :
@@ -65,11 +65,11 @@ rec_binding :
       let e' = List.fold_right
                  (fun (x,t) e_acc -> FunExp (x, t, e_acc))
                  paras e0
-      in (funid, paraid, paraty, retty, e') }
+      in (funid.value, paraid, paraty, retty, e') }
 
   (* Not necessary *)
   | funid=ID para para* EQ e0=expr
-    { err (sprintf "Return type annotation for %s is mandatory." funid) }
+    { err (sprintf "Return type annotation for %s is mandatory." funid.value) }
 
 (* Expressions *)
 expr :
@@ -122,10 +122,10 @@ app_expr :
 
 simple_expr :             (* 括弧をつけなくても関数の引数になれる式 *)
   | LPAREN e=expr RPAREN { e }
-  | n=INTV { ILit n }
+  | n=INTV { ILit n.value }
   | TRUE { BLit true }
   | FALSE { BLit false }
-  | id=ID { Var id }
+  | id=ID { Var id.value }
 
 
 (* Types: for type annotation *)
