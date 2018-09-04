@@ -49,7 +49,7 @@ module G = struct
   let prec_exp = function
     | LetExp _ | LetRecExp _ | FunExp _ -> 10
     | IfExp _ -> 20
-    | BinOp (op, _, _) -> 30 + prec_binop op
+    | BinOp (_, op, _, _) -> 30 + prec_binop op
     | AppExp _ -> 40
     | Var _ | ILit _ | BLit _ -> 50
 
@@ -59,15 +59,15 @@ module G = struct
   let ge_exp e1 e2 = (prec_exp e1) >= (prec_exp e2)
 
   let rec string_of_exp = function
-    | Var x -> x
-    | ILit n -> string_of_int n
-    | BLit b -> string_of_bool b
-    | BinOp (op, e1, e2) as e ->
+    | Var (_,x) -> x
+    | ILit (_,n) -> string_of_int n
+    | BLit (_,b) -> string_of_bool b
+    | BinOp (_, op, e1, e2) as e ->
        (* Left assoc *)
        sprintf "%s %s %s"
          (with_paren (gt_exp e e1) (string_of_exp e1)) (string_of_binop op)
          (with_paren (ge_exp e e2) (string_of_exp e2))
-    | IfExp (e1, e2, e3) as e ->
+    | IfExp (_, e1, e2, e3) as e ->
        (* e1,e2 は If 等ならカッコが要る *)
        (* e3 にカッコは不要 *)
        sprintf "if %s then %s else %s"
@@ -75,7 +75,7 @@ module G = struct
          (with_paren (ge_exp e e2) (string_of_exp e2))
          (string_of_exp e3)
 
-    | LetExp (bindings, e2) as e ->
+    | LetExp (_, bindings, e2) as e ->
        (* string representation of bindings *)
        let bindings_str =
          List.map (fun (x,e1) ->
@@ -86,7 +86,7 @@ module G = struct
          (String.concat " and " bindings_str)
          (string_of_exp e2)
 
-    | LetRecExp (bindings, e2) as e ->
+    | LetRecExp (_, bindings, e2) as e ->
        let bindings_str =
          List.map (fun (x,y,t1,t2,e1) ->
              sprintf "%s (%s : %s) : %s = %s"
@@ -97,10 +97,10 @@ module G = struct
          (String.concat " and " bindings_str)
          (string_of_exp e2)
 
-    | FunExp (x, t, e1) ->
+    | FunExp (_, x, t, e1) ->
        sprintf "fun (%s : %s) -> %s"
          x (string_of_ty t) (string_of_exp e1)
-    | AppExp (e1, e2) as e ->
+    | AppExp (_, e1, e2) as e ->
        (* Left assoc *)
        sprintf "%s %s"
          (with_paren (gt_exp e e1) (string_of_exp e1))

@@ -2,6 +2,7 @@
 open Syntax
 open Syntax.G
 open Printf
+open Util.Error
 %}
 
 %token <Util.Error.range> LPAREN RPAREN SEMISEMI
@@ -42,28 +43,30 @@ program :
 
 (* parameter *)
 para :
-  | LPAREN x=ID COLON t=ty RPAREN { (x.value,t) }
+  | LPAREN x=ID COLON t=ty RPAREN { (x.value, t) }
   | x=ID { err (sprintf "Type annotation for %s is mandatory." x.value) }
 
 (* x = e *)
 let_binding :
-  | x=ID paras=para* EQ e=expr
-    { (* let f (x:t1) (y:t2) = e
+  | id=ID paras=para* EQ e=expr
+    { let r = join_range id.range (range_of_exp e) in (* ok? *)
+      (* let f (x:t1) (y:t2) = e
        * ==> let f = fun (x:t1) -> fun (x:t2) -> e *)
       let e' = List.fold_right
                  (* acc for accumulator *)
-                 (fun (x,t) e_acc -> FunExp (x, t, e_acc))
+                 (fun (x,t) e_acc -> FunExp (r, x, t, e_acc))
                  paras e
-      in (x.value, e') }
+      in (id.value, e') }
 
 (* f (x:S) : T = e *)
 rec_binding :
   (* 最初の para は特別扱い *)
   (* let rec x (y:t1) [paras] : t2 = ... *)
   | funid=ID para=para paras=para* COLON retty=ty EQ e0=expr
-    { let paraid, paraty = para in
+    { let r = join_range funid.range (range_of_exp e0) in (* ok? *)
+      let paraid, paraty = para in
       let e' = List.fold_right
-                 (fun (x,t) e_acc -> FunExp (x, t, e_acc))
+                 (fun (x,t) e_acc -> FunExp (r, x, t, e_acc))
                  paras e0
       in (funid.value, paraid, paraty, retty, e') }
 
@@ -73,23 +76,29 @@ rec_binding :
 
 (* Expressions *)
 expr :
-  | e1=expr op=binop e2=expr { BinOp (op, e1, e2) }
+  | e1=expr op=binop e2=expr
+    { let r = join_range (range_of_exp e1) (range_of_exp e2) in
+      BinOp (r, op, e1, e2) }
 
-  | IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
-    { IfExp (e1, e2, e3) }
-  | LET bindings=separated_nonempty_list(AND, let_binding)
+  | r0=IF e1=expr THEN e2=expr ELSE e3=expr %prec prec_if
+    { let r = join_range r0 (range_of_exp e3) in
+      IfExp (r, e1, e2, e3) }
+  | r0=LET bindings=separated_nonempty_list(AND, let_binding)
     IN e=expr %prec prec_let
-    { LetExp (bindings, e) }
+    { let r = join_range r0 (range_of_exp e) in
+      LetExp (r, bindings, e) }
 
   (* paras must not be empty *)
-  | FUN paras=para+ RARROW e0=expr %prec prec_fun
-    { List.fold_right
-        (fun (x,t) e_acc -> FunExp (x, t, e_acc))
+  | r0=FUN paras=para+ RARROW e0=expr %prec prec_fun
+    { let r = join_range r0 (range_of_exp e0) in
+      List.fold_right
+        (fun (x,t) e_acc -> FunExp (r, x, t, e_acc))
         paras e0 }
 
-  | LET REC rec_bindings=separated_nonempty_list(AND, rec_binding)
+  | r0=LET REC rec_bindings=separated_nonempty_list(AND, rec_binding)
     IN e2=expr %prec prec_let
-    { LetRecExp (rec_bindings, e2) }
+    { let r = join_range r0 (range_of_exp e2) in
+      LetRecExp (r, rec_bindings, e2) }
   | e=minus_expr { e }
 
 (* %inline is necessary; see Sec 5.3 of manual *)
@@ -108,24 +117,28 @@ expr :
 
 (* `n-1` should be BinOp(Minus, n, 1), not App(n, -1) *)
 minus_expr :
-  | MINUS e=minus_expr
-    { match e with
-      | ILit n -> ILit (-n)
-      | e -> BinOp (Minus, ILit 0, e) }
+  | r0=MINUS e=minus_expr
+    { let r = join_range r0 (range_of_exp e) in
+      match e with
+      | ILit (_, n) -> ILit (r, -n)
+      | e -> let zero = ILit (dummy_range, 0) in
+             BinOp (r, Minus, zero , e) }
   | e=app_expr { e }
 
 (* To avoid conflicts *)
 app_expr :
   (* application: Left associative *)
-  | e1=app_expr e2=simple_expr { AppExp (e1, e2) }
+  | e1=app_expr e2=simple_expr
+    { let r = join_range (range_of_exp e1) (range_of_exp e2) in
+      AppExp (r, e1, e2) }
   | e=simple_expr { e }
 
 simple_expr :             (* 括弧をつけなくても関数の引数になれる式 *)
   | LPAREN e=expr RPAREN { e }
-  | n=INTV { ILit n.value }
-  | TRUE { BLit true }
-  | FALSE { BLit false }
-  | id=ID { Var id.value }
+  | i=INTV { ILit (i.range, i.value) }
+  | r=TRUE { BLit (r, true) }
+  | r=FALSE { BLit (r, false) }
+  | id=ID { Var (id.range, id.value) }
 
 
 (* Types: for type annotation *)

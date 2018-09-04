@@ -24,15 +24,15 @@ let translate_aux (f : C.exp) (t1 : ty) (tyopt : ty option) : C.exp * ty =
 (* cast insertion [G |- e ~> f : T] *)
 let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : C.exp * ty =
   match e with
-  | G.Var x ->
+  | G.Var (r,x) ->
      (try
         let t = Environment.find x gamma in
         translate_aux (C.Var x) t tyopt
       with
       | Not_found -> err "CI-Var: Not bound")
-  | G.ILit n -> translate_aux (C.ILit n) TyInt tyopt
-  | G.BLit b -> translate_aux (C.BLit b) TyBool tyopt
-  | G.BinOp (op, e1, e2) ->
+  | G.ILit (r,n) -> translate_aux (C.ILit n) TyInt tyopt
+  | G.BLit (r,b) -> translate_aux (C.BLit b) TyBool tyopt
+  | G.BinOp (r, op, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      let f2, t2 = translate_exp gamma e2 in
      let u1, u2, u3 = ty_binop op in (* depends on op *)
@@ -42,7 +42,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
          translate_aux f u3 tyopt
        else err "CI-BinOp-L"
      else err "CI-BinOp-R"
-  | G.IfExp (e1, e2, e3) ->
+  | G.IfExp (r, e1, e2, e3) ->
      let f1, t1 = translate_exp gamma e1 in
      if are_consistent t1 TyBool then
        let f2, t2 = translate_exp gamma e2 in
@@ -65,7 +65,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
             with
             | Typing_error msg -> err ("CI-If-Br: " ^ msg)))
      else err "CI-If-Test"
-  | G.LetExp (bindings, e2) ->
+  | G.LetExp (r, bindings, e2) ->
      let new_bindings =
        List.map (fun (x,e1) ->
            let f1, t1 = translate_exp gamma e1 in (x, f1, t1))
@@ -79,10 +79,10 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
                        f2)
      in translate_aux f t2 tyopt
 
-  | G.FunExp (x, t, e) ->
+  | G.FunExp (r, x, t, e) ->
      let f, u = translate_exp (Environment.add x t gamma) e in
      translate_aux (C.FunExp (x, t, f)) (TyFun (t, u)) tyopt
-  | G.AppExp (e1, e2) ->
+  | G.AppExp (r, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      (try
         let (t11, t12) = matching_fun t1 in
@@ -95,7 +95,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
       with
       | Typing_error msg -> tyerr ("CI-App: " ^ msg))
 
-  | G.LetRecExp (bindings, e2) ->
+  | G.LetRecExp (r, bindings, e2) ->
      let new_bindings, gamma1, _ =
        translate_rec_bindings gamma bindings in
      let f2, t2 = translate_exp gamma1 e2 in

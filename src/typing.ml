@@ -58,7 +58,7 @@ module G = struct
    * is not necessary. *)
   let rec ty_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : exp) : ty =
     match e with
-    | Var x ->
+    | Var (_,x) ->
        (try
           let t = Environment.find x gamma in
           check_consistent t tyopt
@@ -66,7 +66,7 @@ module G = struct
         | Not_found -> tyerr (sprintf "GT-Var: %s is not bound" x))
     | ILit _ -> check_consistent TyInt tyopt
     | BLit _ -> check_consistent TyBool tyopt
-    | BinOp (op, e1, e2) ->
+    | BinOp (_, op, e1, e2) ->
        let t1 = ty_exp gamma e1 in
        let t2 = ty_exp gamma e2 in
        let (u1, u2, u3) = ty_binop op in
@@ -76,7 +76,7 @@ module G = struct
                        (string_of_ty t2) (string_of_ty u2))
        else tyerr (sprintf "GT-BinOp-L: %s and %s are not consistent"
                      (string_of_ty t1) (string_of_ty u1))
-    | IfExp (e1, e2, e3) ->
+    | IfExp (_, e1, e2, e3) ->
        let t1 = ty_exp gamma e1 in
        if are_consistent t1 TyBool then
          let t2 = ty_exp gamma e2 in
@@ -96,16 +96,16 @@ module G = struct
        else tyerr (sprintf "GT-If-Test: %s is not consistent with bool"
                      (string_of_ty t1))
 
-    | LetExp (bindings, e2) ->
+    | LetExp (_, bindings, e2) ->
        let ty_bindings =
          List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
        let gamma' = Environment.add_all ty_bindings gamma in
        let t2 = ty_exp gamma' e2 in check_consistent t2 tyopt
 
-    | FunExp (x, t, e) ->
+    | FunExp (_, x, t, e) ->
        let u = ty_exp (Environment.add x t gamma) e in
        check_consistent (TyFun (t,u)) tyopt
-    | AppExp (e1, e2) ->
+    | AppExp (_, e1, e2) ->
        let t1 = ty_exp gamma e1 in
        (try
           let (t11, t12) = matching_fun t1 in
@@ -116,7 +116,7 @@ module G = struct
         with
         | Typing_error msg -> tyerr ("GT-App: " ^ msg))
 
-    | LetRecExp (bindings, e2) ->
+    | LetRecExp (_, bindings, e2) ->
        let gamma1, _ = ty_rec_bindings gamma bindings in
        let t2 = ty_exp gamma1 e2 in check_consistent t2 tyopt
 
