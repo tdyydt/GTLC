@@ -49,20 +49,27 @@ end
 (* Cast Calculus *)
 module C = struct
   type exp =
-    | Var of id
-    | ILit of int
-    | BLit of bool
-    | BinOp of binOp * exp * exp
-    | IfExp of exp * exp * exp
-    | LetExp of (id * exp) list * exp
-    | FunExp of id * ty * exp
-    | AppExp of exp * exp
-    | LetRecExp of (id * id * ty * ty * exp) list * exp
+    | Var of range * id
+    | ILit of range * int
+    | BLit of range * bool
+    | BinOp of range * binOp * exp * exp
+    | IfExp of range * exp * exp * exp
+    | LetExp of range * (id * exp) list * exp
+    | FunExp of range * id * ty * exp
+    | AppExp of range * exp * exp
+    | LetRecExp of range * (id * id * ty * ty * exp) list * exp
     (* CastExp(f,t1,t2) ==> [f: t1 => t2]  *)
-    | CastExp of exp * ty * ty
+    | CastExp of range * exp * ty * ty
 
   type program =
     | Exp of exp
     | LetDecl of (id * exp) list
     | LetRecDecl of (id * id * ty * ty * exp) list
+
+  let range_of_exp = function
+    | Var (r,_) | ILit (r,_) | BLit (r,_)
+      | BinOp (r,_,_,_) | IfExp (r,_,_,_) | LetExp (r,_,_)
+      | FunExp (r,_,_,_) | AppExp (r,_,_) | LetRecExp (r,_,_)
+      | CastExp (r,_,_,_) -> r
+
 end

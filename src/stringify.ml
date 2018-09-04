@@ -130,7 +130,7 @@ module C = struct
     | LetExp _ | LetRecExp _ | FunExp _ -> 10
     | IfExp _ -> 20
     | CastExp _ -> 21           (* ?????? *)
-    | BinOp (op, _, _) -> 30 + prec_binop op
+    | BinOp (_, op, _, _) -> 30 + prec_binop op
     | AppExp _ -> 40
     | Var _ | ILit _ | BLit _ -> 50
 
@@ -140,19 +140,19 @@ module C = struct
   let ge_exp f1 f2 = (prec_exp f1) >= (prec_exp f2)
 
   let rec string_of_exp = function
-    | Var x -> x
-    | ILit n -> string_of_int n
-    | BLit b -> string_of_bool b
-    | BinOp (op, f1, f2) as f ->
+    | Var (_,x) -> x
+    | ILit (_,n) -> string_of_int n
+    | BLit (_,b) -> string_of_bool b
+    | BinOp (_, op, f1, f2) as f ->
        sprintf "%s %s %s"
          (with_paren (gt_exp f f1) (string_of_exp f1)) (string_of_binop op)
          (with_paren (ge_exp f f2) (string_of_exp f2))
-    | IfExp (f1, f2, f3) as f ->
+    | IfExp (_, f1, f2, f3) as f ->
        sprintf "if %s then %s else %s"
          (with_paren (ge_exp f f1) (string_of_exp f1))
          (with_paren (ge_exp f f2) (string_of_exp f2))
          (string_of_exp f3)
-    | LetExp (bindings, f2) as f ->
+    | LetExp (_, bindings, f2) as f ->
        let bindings_str =
          List.map (fun (x,f1) ->
              sprintf "%s = %s"
@@ -161,7 +161,7 @@ module C = struct
        sprintf "let %s in %s"
          (String.concat " and " bindings_str)
          (string_of_exp f2)
-    | LetRecExp (bindings, f2) as f ->
+    | LetRecExp (_, bindings, f2) as f ->
        let bindings_str =
          List.map (fun (x,y,t1,t2,f1) ->
              sprintf "%s (%s : %s) : %s = %s"
@@ -171,14 +171,14 @@ module C = struct
        sprintf "let rec %s in %s"
          (String.concat " and " bindings_str)
          (string_of_exp f2)
-    | FunExp (x, t, f1) ->
+    | FunExp (_, x, t, f1) ->
        sprintf "fun (%s : %s) -> %s"
          x (string_of_ty t) (string_of_exp f1)
-    | AppExp (f1, f2) as f ->
+    | AppExp (_, f1, f2) as f ->
        sprintf "%s %s"
          (with_paren (gt_exp f f1) (string_of_exp f1))
          (with_paren (ge_exp f f2) (string_of_exp f2))
-    | CastExp (f1, t1, t2) as f ->
+    | CastExp (_, f1, t1, t2) as f ->
        sprintf "%s : %s => %s"
          (with_paren (ge_exp f f1) (string_of_exp f1))
          (string_of_ty t1) (string_of_ty t2)

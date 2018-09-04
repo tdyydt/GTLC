@@ -73,36 +73,36 @@ let eval_binop (op : binOp) (v1 : value) (v2 : value) : value =
 (* Big-step evaluation *)
 let rec eval_exp : env -> exp -> value = fun env ->
   function
-  | Var x ->
+  | Var (_,x) ->
      (try
         let v = Environment.find x env in v
       with
       | Not_found -> everr (sprintf "E-Var: %s is not bound" x))
-  | ILit n -> IntV n
-  | BLit b -> BoolV b
-  | BinOp (op, f1, f2) ->
+  | ILit (_,n) -> IntV n
+  | BLit (_,b) -> BoolV b
+  | BinOp (_, op, f1, f2) ->
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
      eval_binop op v1 v2
-  | IfExp (f1, f2, f3) ->
+  | IfExp (_, f1, f2, f3) ->
      let v1 = eval_exp env f1 in
      (match v1 with
       | BoolV true -> eval_exp env f2
       | BoolV false -> eval_exp env f3
       | _ -> everr "E-If: Test expression must be boolean")
-  | LetExp (bindings, f2) ->
+  | LetExp (_, bindings, f2) ->
      let val_bindings =
        List.map (fun (x,f1) -> (x, eval_exp env f1))
          bindings in
      let env' = Environment.add_all val_bindings env in
      eval_exp env' f2
 
-  | FunExp (x, _, f) -> FunV (x, f, ref env)
-  | AppExp (f1, f2) ->
+  | FunExp (_, x, _, f) -> FunV (x, f, ref env)
+  | AppExp (_, f1, f2) ->
      let v1 = eval_exp env f1 in
      let v2 = eval_exp env f2 in
      eval_app v1 v2
-  | LetRecExp (bindings, f2) ->
+  | LetRecExp (_, bindings, f2) ->
      let dummy_env = ref Environment.empty in
      let val_bindings =
        List.map (fun (x,y,_,_,f1) -> (x, FunV (y,f1,dummy_env)))
@@ -112,7 +112,7 @@ let rec eval_exp : env -> exp -> value = fun env ->
      dummy_env := new_env;
      eval_exp new_env f2
 
-  | CastExp (f, t1, t2) ->
+  | CastExp (r, f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2
 
 (* evaluate application [v1 v2] *)
