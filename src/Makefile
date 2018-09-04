@@ -6,9 +6,9 @@ MENHIROPTIONS=--explain --infer
 
 PROGNAME=gtlc
 
-# For now, the order of files matters
+# The order of files matters ??
 OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo \
-     typing.cmo	translate.cmo eval.cmo
+     typing.cmo translate.cmo eval.cmo
 
 DEPEND += lexer.ml parser.ml
 
@@ -32,7 +32,9 @@ lib.cma: $(DEPEND) $(OBJS)
 
 
 # parser & lexer
-parser.ml parser.mli: parser.mly syntax.cmo
+# NOTE: You have to add dependencies of parser.mly by hand,
+# and their order matters.
+parser.ml parser.mli: parser.mly util.cmo syntax.cmo
 	@rm -f $@
 	$(MENHIR) $(MENHIROPTIONS) -v $<
 	@chmod -w $@
