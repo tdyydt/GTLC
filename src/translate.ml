@@ -13,9 +13,9 @@ let cast_opt (f : C.exp) (t1 : ty) (t2 : ty) : C.exp =
   if t1 = t2 then f
   else C.CastExp (f,t1,t2)
 
-(* auxiliary function for translate_exp *)
+(* auxiliary function, used in translate_exp, to deal with tyopt *)
 (* cast f to type t2 (if any) *)
-let translate_aux (f : C.exp) (t1 : ty) (tyopt : ty option) : C.exp * ty =
+let translate_tyopt (f : C.exp) (t1 : ty) (tyopt : ty option) : C.exp * ty =
   match tyopt with
     (* t2 is given by a programmer *)
   | Some t2 -> (cast_opt f t1 t2, t2)
@@ -27,11 +27,11 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
   | G.Var (r,x) ->
      (try
         let t = Environment.find x gamma in
-        translate_aux (C.Var x) t tyopt
+        translate_tyopt (C.Var x) t tyopt
       with
       | Not_found -> err "CI-Var: Not bound")
-  | G.ILit (r,n) -> translate_aux (C.ILit n) TyInt tyopt
-  | G.BLit (r,b) -> translate_aux (C.BLit b) TyBool tyopt
+  | G.ILit (r,n) -> translate_tyopt (C.ILit n) TyInt tyopt
+  | G.BLit (r,b) -> translate_tyopt (C.BLit b) TyBool tyopt
   | G.BinOp (r, op, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      let f2, t2 = translate_exp gamma e2 in
@@ -39,7 +39,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
      if are_consistent t1 u1 then
        if are_consistent t2 u2 then
          let f = C.BinOp (op, cast_opt f1 t1 u1, cast_opt f2 t2 u2) in
-         translate_aux f u3 tyopt
+         translate_tyopt f u3 tyopt
        else err "CI-BinOp-L"
      else err "CI-BinOp-R"
   | G.IfExp (r, e1, e2, e3) ->
@@ -77,11 +77,11 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
      let f2, t2 = translate_exp gamma' e2 in
      let f = C.LetExp (List.map (fun (x,f1,_) -> (x,f1)) new_bindings,
                        f2)
-     in translate_aux f t2 tyopt
+     in translate_tyopt f t2 tyopt
 
   | G.FunExp (r, x, t, e) ->
      let f, u = translate_exp (Environment.add x t gamma) e in
-     translate_aux (C.FunExp (x, t, f)) (TyFun (t, u)) tyopt
+     translate_tyopt (C.FunExp (x, t, f)) (TyFun (t, u)) tyopt
   | G.AppExp (r, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
      (try
@@ -90,7 +90,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
         if are_consistent t2 t11
         then let f = C.AppExp (cast_opt f1 t1 (TyFun (t11, t12)),
                                cast_opt f2 t2 t11) in
-             translate_aux f t12 tyopt
+             translate_tyopt f t12 tyopt
         else err "CI-App"
       with
       | Typing_error msg -> tyerr ("CI-App: " ^ msg))
@@ -99,7 +99,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
      let new_bindings, gamma1, _ =
        translate_rec_bindings gamma bindings in
      let f2, t2 = translate_exp gamma1 e2 in
-     translate_aux (C.LetRecExp (new_bindings, f2)) t2 tyopt
+     translate_tyopt (C.LetRecExp (new_bindings, f2)) t2 tyopt
 
 (* auxiliary function to translate LetRec bindings *)
 and translate_rec_bindings : tyenv -> (id * id * ty * ty * G.exp) list -> (id * id * ty * ty * C.exp) list * tyenv * (id * ty) list =
