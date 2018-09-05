@@ -168,21 +168,25 @@ module C = struct
          pp_exp_paren1 f1
          pp_exp_paren1 f2
          pp_exp f3
-    (* | LetExp (_, bindings, f2) ->
-     *    pp_print_string ppf "let";
-     *    (\* print bindings *\)
-     *    List.iter (fun (x,f1) ->
-     *        fprintf ppf " %s = %a" x with_paren_R f1)
-     *      bindings;
-     *    fprintf ppf " in %a" pp_exp f2
-     * | LetRecExp (_, bindings, f2) ->
-     *    pp_print_string ppf "let rec";
-     *    (\* print rec bindings *\)
-     *    List.iter (fun (x,y,t1,t2,f1) ->
-     *        fprintf ppf " %s (%s : %a) : %a = %a"
-     *          x y pp_ty t1 pp_ty t2 with_paren_R f1)
-     *      bindings;
-     *    fprintf ppf " in %a" *)
+
+    | LetExp (_, bindings, f2) ->
+       pp_print_string ppf "let ";
+       (* print bindings ; print _and_ between them *)
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,f1) ->
+           fprintf ppf "%s = %a" x pp_exp_paren1 f1)
+         ppf bindings;
+       fprintf ppf " in %a" pp_exp f2
+
+    | LetRecExp (_, bindings, f2) ->
+       pp_print_string ppf "let rec ";
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,y,t1,t2,f1) ->
+           fprintf ppf "%s (%s : %a) : %a = %a"
+             x y pp_ty t1 pp_ty t2 pp_exp_paren1 f1)
+         ppf bindings;
+       fprintf ppf " in %a" pp_exp f2
+
     | FunExp (_, x, t, f1) ->
        fprintf ppf "fun (%s : %a) -> %a"
          x pp_ty t pp_exp f1
@@ -194,19 +198,22 @@ module C = struct
        fprintf ppf "%a : %a => %a"
          pp_exp_paren1 f1 pp_ty t1 pp_ty t2
 
-  (* let rec string_of_program = function
-   *   | Exp f -> string_of_exp f
-   *   | LetDecl bindings ->
-   *      let bindings_str =
-   *        List.map (fun (x,f1) ->
-   *            sprintf "%s = %s" x (string_of_exp f1))
-   *          bindings in
-   *      sprintf "let %s" (String.concat " and " bindings_str)
-   *   | LetRecDecl bindings ->
-   *      let bindings_str =
-   *        List.map (fun (x,y,t1,t2,f1) ->
-   *            sprintf "%s (%s : %s) : %s = %s"
-   *              x y (string_of_ty t1) (string_of_ty t2) (string_of_exp f1))
-   *          bindings in
-   *      sprintf "let rec %s" (String.concat " and " bindings_str) *)
+  let rec pp_prog ppf = function
+    | Exp f -> pp_exp ppf f
+    | LetDecl bindings ->
+       pp_print_string ppf "let ";
+       (* print bindings ; print _and_ between them *)
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,f1) ->
+           fprintf ppf "%s = %a" x pp_exp f1)
+         ppf bindings
+
+    | LetRecDecl bindings ->
+       pp_print_string ppf "let rec ";
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,y,t1,t2,f1) ->
+           fprintf ppf "%s (%s : %a) : %a = %a"
+             x y pp_ty t1 pp_ty t2 pp_exp f1)
+         ppf bindings
+
 end
