@@ -55,11 +55,15 @@ let rec read_eval_print gamma env =
      print_string s;
      print_newline ();
      read_eval_print gamma env
-  | Blame (r, tag1, tag2) ->
+  | Blame (r, plr, tag1, tag2) ->
+     begin match plr with
+     | Pos -> printf "Blame on the expression side: %s => %s\n"
+                (string_of_tag tag1) (string_of_tag tag2)
+     | Neg -> printf "Blame on the environment side: %s => %s\n"
+                (string_of_tag tag1) (string_of_tag tag2)
+     end;
      print_range r;
      print_newline ();
-     printf "Blame: %s is incompatible with tag %s\n"
-       (string_of_tag tag2) (string_of_tag tag1);
      read_eval_print gamma env
 
 let initial_gamma = Environment.empty
