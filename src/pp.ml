@@ -148,21 +148,25 @@ module C = struct
   let ge_exp f1 f2 = (prec_exp f1) >= (prec_exp f2)
 
   let rec pp_exp ppf f =
-    let with_paren_L ppf f1 = with_paren (gt_exp f f1) pp_exp ppf f1 in
-    let with_paren_R ppf f1 = with_paren (ge_exp f f1) pp_exp ppf f1 in
+    (* pp_exp_paren1 means: paren needed, even if same precedence *)
+    (* e.g. For left operand of left-associative operations,
+     * no paren needed if same precedence,
+     * so you should use pp_exp_paren2 (without eq) *)
+    let pp_exp_paren1 ppf f1 = with_paren (ge_exp f f1) pp_exp ppf f1 in
+    let pp_exp_paren2 ppf f1 = with_paren (gt_exp f f1) pp_exp ppf f1 in
     match f with
     | Var (_,x) -> pp_print_string ppf x
     | ILit (_,n) -> fprintf ppf "%d" n
     | BLit (_,b) -> pp_print_string ppf (string_of_bool b)
     | BinOp (_, op, f1, f2) ->
        fprintf ppf "%a %a %a"
-         with_paren_L f1
+         pp_exp_paren2 f1
          pp_binop op
-         with_paren_R f2
+         pp_exp_paren1 f2
     | IfExp (_, f1, f2, f3) ->
        fprintf ppf "if %a then %a else %a"
-         with_paren_R f1
-         with_paren_R f2
+         pp_exp_paren1 f1
+         pp_exp_paren1 f2
          pp_exp f3
     (* | LetExp (_, bindings, f2) ->
      *    pp_print_string ppf "let";
@@ -182,13 +186,13 @@ module C = struct
     | FunExp (_, x, t, f1) ->
        fprintf ppf "fun (%s : %a) -> %a"
          x pp_ty t pp_exp f1
-    | AppExp (_, f1, f2) ->
+    | AppExp (_, f1, f2) ->     (* Left assoc *)
        fprintf ppf "%a %a"
-         with_paren_L f1
-         with_paren_R f2
+         pp_exp_paren2 f1
+         pp_exp_paren1 f2
     | CastExp (_, f1, t1, t2) ->
        fprintf ppf "%a : %a => %a"
-         with_paren_R f1 pp_ty t1 pp_ty t2
+         pp_exp_paren1 f1 pp_ty t1 pp_ty t2
 
   (* let rec string_of_program = function
    *   | Exp f -> string_of_exp f
