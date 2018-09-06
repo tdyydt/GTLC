@@ -3,10 +3,9 @@ open Syntax
 
 (* cast-insertion translation *)
 
-(* CI_error is an implementation error
+(* CI_bug is an implementation error
  * because static typing should have rejected them *)
-exception CI_error of string
-let err s = raise (CI_error s)  (* implementation bug *)
+exception CI_bug of string
 
 (* insert cast if needed *)
 let cast_opt (f : C.exp) (t1 : ty) (t2 : ty) : C.exp =
@@ -29,7 +28,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
         let t = Environment.find x gamma in
         translate_tyopt (C.Var (r,x)) t tyopt
       with
-      | Not_found -> err "CI-Var: Not bound")
+      | Not_found -> raise (CI_bug ("Var: Nnot bound: " ^ x)))
   | G.ILit (r,n) -> translate_tyopt (C.ILit (r,n)) TyInt tyopt
   | G.BLit (r,b) -> translate_tyopt (C.BLit (r,b)) TyBool tyopt
   | G.BinOp (r, op, e1, e2) ->
@@ -40,31 +39,31 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
        if are_consistent t2 u2 then
          let f = C.BinOp (r, op, cast_opt f1 t1 u1, cast_opt f2 t2 u2) in
          translate_tyopt f u3 tyopt
-       else err "CI-BinOp-L"
-     else err "CI-BinOp-R"
+       else raise (CI_bug "BinOp (left)")
+     else raise (CI_bug "BinOp (right)")
   | G.IfExp (r, e1, e2, e3) ->
      let f1, t1 = translate_exp gamma e1 in
      if are_consistent t1 TyBool then
        let f2, t2 = translate_exp gamma e2 in
        let f3, t3 = translate_exp gamma e3 in
-       (match tyopt with
-        | Some t ->
-           if are_consistent t2 t then
-             if are_consistent t3 t then
-               (C.IfExp (r, cast_opt f1 t1 TyBool,
-                         cast_opt f2 t2 t,
-                         cast_opt f3 t3 t), t)
-             else err "CI-If-Else"
-           else err "CI-If-Then"
-        | None ->
-           (try
-              let u = meet t2 t3 in
+       begin match tyopt with
+       | Some t ->
+          if are_consistent t2 t then
+            if are_consistent t3 t then
               (C.IfExp (r, cast_opt f1 t1 TyBool,
-                        cast_opt f2 t2 u,
-                        cast_opt f3 t3 u), u)
-            with
-            | Typing_error msg -> err ("CI-If-Br: " ^ msg)))
-     else err "CI-If-Test"
+                        cast_opt f2 t2 t,
+                        cast_opt f3 t3 t), t)
+            else raise (CI_bug "If (else)")
+          else raise (CI_bug "If (then)")
+       | None ->
+          begin match meet t2 t3 with
+          | Some u -> (C.IfExp (r, cast_opt f1 t1 TyBool,
+                                cast_opt f2 t2 u,
+                                cast_opt f3 t3 u), u)
+          | None -> raise (CI_bug "If (branches): meet")
+          end
+       end
+     else raise (CI_bug "If (test)")
   | G.LetExp (r, bindings, e2) ->
      let new_bindings =
        List.map (fun (x,e1) ->
@@ -85,16 +84,16 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
      translate_tyopt (C.FunExp (r, x, t, f)) (TyFun (t, u)) tyopt
   | G.AppExp (r, e1, e2) ->
      let f1, t1 = translate_exp gamma e1 in
-     (try
-        let (t11, t12) = matching_fun t1 in
+     begin match matching_fun t1 with
+     | Some (t11, t12) ->
         let f2, t2 = translate_exp gamma e2 in
         if are_consistent t2 t11
         then let f = C.AppExp (r, cast_opt f1 t1 (TyFun (t11, t12)),
                                cast_opt f2 t2 t11) in
              translate_tyopt f t12 tyopt
-        else err "CI-App"
-      with
-      | Typing_error msg -> tyerr ("CI-App: " ^ msg))
+        else raise (CI_bug "App")
+     | None -> raise (CI_bug "App: matching")
+     end
 
   | G.LetRecExp (r, bindings, e2) ->
      let new_bindings, gamma1, _ =
