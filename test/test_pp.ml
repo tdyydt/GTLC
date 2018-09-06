@@ -4,7 +4,7 @@ open Format
 (* test parser and G.string_of_exp *)
 (* because I don't have parser for C.exp now *)
 
-let test_string_of_exp =
+let test_pp_exp =
   let test input =
     input >:: fun test_ctxt ->
               (* if you parse input, then stringify it,
@@ -35,8 +35,8 @@ let test_string_of_exp =
       "fun (x : ?) -> fun (y : ?) -> 1";
       "let x = 5 in x";
       "let x = 5 in let y = 3 in x";
-      "let f = (fun (x : ?) -> x) in f";
-      "let x = (let y = 3 in y) in x";
+      (* "let f = fun (x : ?) -> x in f";
+       * "let x = let y = 3 in y in x"; *)
 
       "if true then 1 + 3 else f 5";
 
@@ -54,5 +54,5 @@ let test_string_of_exp =
     ]
 
 let suite = [
-    "test_string_of_exp" >::: test_string_of_exp
+    "test_pp_exp" >::: test_pp_exp
   ]
