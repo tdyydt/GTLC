@@ -25,20 +25,6 @@ let rec pp_ty ppf t =
        with_paren_L t1
        pp_ty t2
 
-(* binOp *)
-let string_of_binop = function
-  | Plus  -> "+"
-  | Minus -> "-"
-  | Mult  -> "*"
-  | Div   -> "/"
-  | Lt    -> "<"
-  | Gt    -> ">"
-  | Eq    -> "="
-  | LE    -> "<="
-  | GE    -> ">="
-  | LAnd  -> "&&"
-  | LOr   -> "||"
-
 let pp_binop ppf op =
   pp_print_string ppf (string_of_binop op)
 
@@ -215,3 +201,22 @@ module G = struct
          ppf bindings
 
 end
+
+open Eval
+
+let string_of_tag = function
+  | IntT -> "int"
+  | BoolT -> "bool"
+  | FunT -> "? -> ?"
+
+let rec pp_value ppf = function
+  | IntV n -> fprintf ppf "%d" n
+  | BoolV b -> pp_print_string ppf (string_of_bool b)
+  | FunV _ -> pp_print_string ppf "<fun>"
+  | Wrapped (v, t1, t2, t3, t4, _, _) ->
+     (* How should wrapped functions be displayed? *)
+     (* Wrapped, Tagged can be nested? *)
+     fprintf ppf "%a : %a -> %a => %a -> %a"
+       pp_value v pp_ty t1 pp_ty t2 pp_ty t3 pp_ty t4
+  | Tagged (tag, v) ->
+     fprintf ppf "%a : %s => ?" pp_value v (string_of_tag tag)

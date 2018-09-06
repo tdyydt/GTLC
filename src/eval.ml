@@ -1,8 +1,6 @@
+open Util.Error
 open Syntax
 open Syntax.C
-open Stringify
-open Printf
-open Util.Error
 
 (* Eval_bug is an implementation error
  * because static typing should have rejected them *)
@@ -12,11 +10,6 @@ type tag =
   | IntT                        (* int *)
   | BoolT                       (* bool *)
   | FunT                        (* Function (Arrow) [?->?] *)
-
-let string_of_tag = function
-  | IntT -> "int"
-  | BoolT -> "bool"
-  | FunT -> "? -> ?"
 
 type polarity = Pos | Neg
 let compl = function Pos -> Neg | Neg -> Pos (* complement *)
@@ -41,20 +34,6 @@ type value =
   | Tagged of tag * value
 and env = value Environment.t
 
-let rec string_of_value = function
-  | IntV n -> string_of_int n
-  | BoolV b -> string_of_bool b
-  | FunV _ -> "<fun>"
-  (* Wrapped, Tagged can be nested? *)
-  | Wrapped (v, t1, t2, t3, t4, _, _) ->
-     (* How should wrapped functions be displayed? *)
-     sprintf "(%s : %s -> %s => %s -> %s)"
-       (string_of_value v) (string_of_ty t1) (string_of_ty t2)
-       (string_of_ty t3) (string_of_ty t4)
-  | Tagged (tag, v) ->
-     sprintf "(%s : %s => ?)"
-       (string_of_value v) (string_of_tag tag)
-
 (* evaluate binary operation *)
 let eval_binop (op : binOp) (v1 : value) (v2 : value) : value =
   match op, v1, v2 with
@@ -68,11 +47,11 @@ let eval_binop (op : binOp) (v1 : value) (v2 : value) : value =
   | LE, IntV n1, IntV n2 -> BoolV (n1 <= n2)
   | GE, IntV n1, IntV n2 -> BoolV (n1 >= n2)
   | (Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE), _, _ ->
-     raise (Eval_bug ("Both arguments must be integer: " ^ Pp.string_of_binop op))
+     raise (Eval_bug ("Both arguments must be integer: " ^ string_of_binop op))
   | LAnd, BoolV b1, BoolV b2 -> BoolV (b1 && b2)
   | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
   | (LAnd | LOr), _, _ ->
-     raise (Eval_bug ("Both arguments must be boolean: " ^ Pp.string_of_binop op))
+     raise (Eval_bug ("Both arguments must be boolean: " ^ string_of_binop op))
 
 (* Big-step evaluation *)
 let rec eval_exp : env -> exp -> value = fun env ->

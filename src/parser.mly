@@ -1,7 +1,6 @@
 %{
 open Syntax
 open Syntax.G
-open Printf
 open Util.Error
 %}
 
@@ -44,7 +43,9 @@ program :
 (* parameter *)
 para :
   | LPAREN x=ID COLON t=ty RPAREN { (x.value, t) }
-  | x=ID { err (sprintf "Type annotation for %s is mandatory." x.value) }
+  | x=ID { raise (Syntax_error
+                    (x.range,
+                     Format.sprintf "Type annotation for %s is mandatory." x.value)) }
 
 (* x = e *)
 let_binding :
@@ -71,8 +72,10 @@ rec_binding :
       in (funid.value, paraid, paraty, retty, e') }
 
   (* Not necessary *)
-  | funid=ID para para* EQ e0=expr
-    { err (sprintf "Return type annotation for %s is mandatory." funid.value) }
+  | funid=ID para para* r1=EQ e0=expr
+    { raise (Syntax_error
+               (join_range funid.range r1,
+                Format.sprintf "Return type annotation for %s is mandatory." funid.value)) }
 
 (* Expressions *)
 expr :

@@ -1,8 +1,7 @@
 open Util.Error
 
 (* used in parser.mly *)
-exception Syntax_error of string
-let err s = raise (Syntax_error s)
+exception Syntax_error of range * string
 
 type id = string
 
@@ -13,6 +12,20 @@ type ty =
   | TyDyn                       (* the dynamic/unknown type *)
 
 type binOp = Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE | LAnd | LOr
+
+(* NOTE: defined here, because Eval uses this *)
+let string_of_binop = function
+  | Plus  -> "+"
+  | Minus -> "-"
+  | Mult  -> "*"
+  | Div   -> "/"
+  | Lt    -> "<"
+  | Gt    -> ">"
+  | Eq    -> "="
+  | LE    -> "<="
+  | GE    -> ">="
+  | LAnd  -> "&&"
+  | LOr   -> "||"
 
 (* Gradually typed surface language *)
 module G = struct

@@ -7,8 +7,8 @@ MENHIROPTIONS=--explain --infer
 PROGNAME=gtlc
 
 # The order matters. Fix needed.
-OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo pp.cmo \
-     typing.cmo translate.cmo eval.cmo
+OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo \
+     typing.cmo translate.cmo eval.cmo pp.cmo
 
 DEPEND += lexer.ml parser.ml
 
@@ -34,7 +34,7 @@ lib.cma: $(DEPEND) $(OBJS)
 # parser & lexer
 # NOTE: You have to add dependencies of parser.mly by hand,
 # and their order matters.
-parser.ml parser.mli: parser.mly util.cmo syntax.cmo pp.cmo
+parser.ml parser.mli: parser.mly util.cmo syntax.cmo
 	@rm -f $@
 	$(MENHIR) $(MENHIROPTIONS) -v $<
 	@chmod -w $@
