@@ -6,9 +6,9 @@ MENHIROPTIONS=--explain --infer
 
 PROGNAME=gtlc
 
-# The order of files matters ??
-OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo \
-     typing.cmo translate.cmo eval.cmo pp.cmo
+# The order matters. Fix needed.
+OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo pp.cmo \
+     typing.cmo translate.cmo eval.cmo
 
 DEPEND += lexer.ml parser.ml
 

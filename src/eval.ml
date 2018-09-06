@@ -4,10 +4,9 @@ open Stringify
 open Printf
 open Util.Error
 
-(* Eval_error is an implementation error
+(* Eval_bug is an implementation error
  * because static typing should have rejected them *)
-exception Eval_error of string
-let everr s = raise (Eval_error s)
+exception Eval_bug of string
 
 type tag =
   | IntT                        (* int *)
@@ -46,7 +45,7 @@ let rec string_of_value = function
   | IntV n -> string_of_int n
   | BoolV b -> string_of_bool b
   | FunV _ -> "<fun>"
-  (* Wrapped, Tagged のネストはあるか？ *)
+  (* Wrapped, Tagged can be nested? *)
   | Wrapped (v, t1, t2, t3, t4, _, _) ->
      (* How should wrapped functions be displayed? *)
      sprintf "(%s : %s -> %s => %s -> %s)"
@@ -69,20 +68,21 @@ let eval_binop (op : binOp) (v1 : value) (v2 : value) : value =
   | LE, IntV n1, IntV n2 -> BoolV (n1 <= n2)
   | GE, IntV n1, IntV n2 -> BoolV (n1 >= n2)
   | (Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE), _, _ ->
-     everr ("Both arguments must be integer: " ^ string_of_binop op)
+     raise (Eval_bug ("Both arguments must be integer: " ^ Pp.string_of_binop op))
   | LAnd, BoolV b1, BoolV b2 -> BoolV (b1 && b2)
   | LOr, BoolV b1, BoolV b2 -> BoolV (b1 || b2)
   | (LAnd | LOr), _, _ ->
-     everr ("Both arguments must be boolean: " ^ string_of_binop op)
+     raise (Eval_bug ("Both arguments must be boolean: " ^ Pp.string_of_binop op))
 
 (* Big-step evaluation *)
 let rec eval_exp : env -> exp -> value = fun env ->
   function
-  | Var (_,x) ->
-     (try
+  | Var (_,x) -> begin
+      try
         let v = Environment.find x env in v
       with
-      | Not_found -> everr (sprintf "E-Var: %s is not bound" x))
+      | Not_found -> raise (Eval_bug ("Var: Not bound: " ^ x))
+    end
   | ILit (_,n) -> IntV n
   | BLit (_,b) -> BoolV b
   | BinOp (_, op, f1, f2) ->
@@ -91,10 +91,11 @@ let rec eval_exp : env -> exp -> value = fun env ->
      eval_binop op v1 v2
   | IfExp (_, f1, f2, f3) ->
      let v1 = eval_exp env f1 in
-     (match v1 with
-      | BoolV true -> eval_exp env f2
-      | BoolV false -> eval_exp env f3
-      | _ -> everr "E-If: Test expression must be boolean")
+     begin match v1 with
+     | BoolV true -> eval_exp env f2
+     | BoolV false -> eval_exp env f3
+     | _ -> raise (Eval_bug ("If: Test expression must be boolean"))
+     end
   | LetExp (_, bindings, f2) ->
      let val_bindings =
        List.map (fun (x,f1) -> (x, eval_exp env f1))
@@ -131,7 +132,7 @@ and eval_app (v1 : value) (v2 : value) : value = match v1 with
       * [(v1' (v2: t3 => t1)): t2 => t4] *)
      let v2' = eval_cast v2 t3 t1 r (compl p) in
      let v' = eval_app v1' v2' in eval_cast v' t2 t4 r p
-  | _ -> everr "EvalApp: Non-function value is applied"
+  | _ -> raise (Eval_bug "eval_app: Non-function value is applied")
 
 (* evaluate cast [v: t1 => t2]
  * Besides, r is blame label *)
@@ -153,22 +154,25 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) (r : range) (p : polarity) : value
 
   (* either Succeed (Collapse), or Fail (Conflict) *)
   | TyDyn, TyInt ->
-     (match v with
-      (* [v': int => ? => int] --> v' *)
-      | Tagged (IntT, v') -> v'
-      | Tagged (tag, _) -> raise (Blame (r, p, tag, IntT))
-      | _ -> everr "Should not happen: Untagged value")
+     begin match v with
+     (* [v': int => ? => int] --> v' *)
+     | Tagged (IntT, v') -> v'
+     | Tagged (tag, _) -> raise (Blame (r, p, tag, IntT))
+     | _ -> raise (Eval_bug "eval_cast: Untagged value")
+     end
   | TyDyn, TyBool ->
-     (match v with
-      | Tagged (BoolT, v') -> v'
-      | Tagged (tag, _) -> raise (Blame (r, p, tag, BoolT))
-      | _ -> everr "Should not happen: Untagged value")
+     begin match v with
+     | Tagged (BoolT, v') -> v'
+     | Tagged (tag, _) -> raise (Blame (r, p, tag, BoolT))
+     | _ -> raise (Eval_bug "eval_cast: Untagged value")
+     end
   | TyDyn, TyFun (TyDyn, TyDyn) ->
-     (match v with
-      | Tagged (FunT, v') -> v'
-      | Tagged (tag, _) -> raise (Blame (r, p, tag, FunT))
-      (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
-      | _ -> everr "Should not happen: Untagged value")
+     begin match v with
+     | Tagged (FunT, v') -> v'
+     | Tagged (tag, _) -> raise (Blame (r, p, tag, FunT))
+     (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
+     | _ -> raise (Eval_bug "eval_cast: Untagged value")
+     end
 
   (* Expand *)
   | TyDyn, TyFun (t21, t22) ->  (* Not both t21 and t22 is TyDyn *)
@@ -178,7 +182,7 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) (r : range) (p : polarity) : value
      in Wrapped (v', TyDyn, TyDyn, t21, t22, r, p)
 
   (* The remaining cases should have been rejected as static type error *)
-  | _, _ -> everr "Should not happen"
+  | _, _ -> raise (Eval_bug "eval_cast: unexpected case")
 
 
 let eval_prog : env -> program -> env * (id * value) list = fun env ->

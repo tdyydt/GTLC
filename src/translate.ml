@@ -23,12 +23,13 @@ let translate_tyopt (f : C.exp) (t1 : ty) (tyopt : ty option) : C.exp * ty =
 (* cast insertion [G |- e ~> f : T] *)
 let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : C.exp * ty =
   match e with
-  | G.Var (r,x) ->
-     (try
-        let t = Environment.find x gamma in
-        translate_tyopt (C.Var (r,x)) t tyopt
-      with
-      | Not_found -> raise (CI_bug ("Var: Nnot bound: " ^ x)))
+  | G.Var (r,x) -> begin
+     try
+       let t = Environment.find x gamma in
+       translate_tyopt (C.Var (r,x)) t tyopt
+     with
+     | Not_found -> raise (CI_bug ("Var: Nnot bound: " ^ x))
+    end
   | G.ILit (r,n) -> translate_tyopt (C.ILit (r,n)) TyInt tyopt
   | G.BLit (r,b) -> translate_tyopt (C.BLit (r,b)) TyBool tyopt
   | G.BinOp (r, op, e1, e2) ->

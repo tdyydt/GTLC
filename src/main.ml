@@ -64,7 +64,7 @@ let rec read_eval_print gamma env =
      fprintf std_formatter "%a\n" print_range r;
      fprintf std_formatter (fmt ^^ "\n") pp_ty t1 pp_ty t2
 
-  | Syntax_error s | CI_bug s | Eval_error s ->
+  | Syntax_error s | CI_bug s | Eval_bug s ->
      fprintf std_formatter "%s\n" s;
      read_eval_print gamma env
   | Blame (r, plr, tag1, tag2) ->
