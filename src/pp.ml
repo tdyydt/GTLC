@@ -1,34 +1,38 @@
 open Format
 open Syntax
 
+(* ppf_e is printer for e *)
 let with_paren flag ppf_e ppf e =
   fprintf ppf (if flag then "(%a)" else "%a") ppf_e e
 
 (* precedence of type *)
 (* larger number means higher precedence *)
 let prec_ty = function
-  | (TyInt | TyBool | TyDyn) -> 2
+  | TyInt | TyBool | TyDyn -> 2
   | TyFun _ -> 1
 
 let ge_ty t1 t2 = (prec_ty t1) >= (prec_ty t2)
+let gt_ty t1 t2 = (prec_ty t1) > (prec_ty t2)
 
 let rec pp_ty ppf t =
-  (* put paren around t1 if needed *)
-  let with_paren_L ppf t1 = with_paren (ge_ty t t1) pp_ty ppf t1 in
+  (* put paren around t1 if needed;
+   * 1: paren needed, even if same precedence
+   * 2: no paren needed, if same precedence *)
+  let pp_ty_paren1 ppf t1 = with_paren (ge_ty t t1) pp_ty ppf t1 in
+  let pp_ty_paren2 ppf t1 = with_paren (gt_ty t t1) pp_ty ppf t1 in
   match t with
   | TyInt -> pp_print_string ppf "int"
   | TyBool -> pp_print_string ppf "bool"
   | TyDyn -> pp_print_string ppf "?"
-  | TyFun (t1,t2) ->
-     fprintf ppf "%a -> %a"
-       (* (with_paren (ge_ty t t1) pp_ty) t1 *)
-       with_paren_L t1
-       pp_ty t2
+  | TyFun (t1,t2) ->            (* Right assoc *)
+     (* NOTE: gt_ty & pp_ty_paren2 is not necessary;
+      * [pp_ty t2] is ok for now *)
+     fprintf ppf "%a -> %a" pp_ty_paren1 t1 pp_ty_paren2 t2
 
 let pp_binop ppf op =
   pp_print_string ppf (string_of_binop op)
 
-(* 1~10 で返す *)
+(* Must be between 1~10 ; because of prec_exp *)
 let prec_binop = function
   | LOr -> 1
   | LAnd -> 2
@@ -73,15 +77,12 @@ module C = struct
          pp_exp_paren1 f1
          pp_exp_paren1 f2
          pp_exp f3
-
     | LetExp (_, bindings, f2) ->
        fprintf ppf "let %a in %a"
          pp_bindings bindings pp_exp f2
-
     | LetRecExp (_, bindings, f2) ->
        fprintf ppf "let rec %a in %a"
          pp_rec_bindings bindings pp_exp f2
-
     | FunExp (_, x, t, f1) ->
        fprintf ppf "fun (%s : %a) -> %a"
          x pp_ty t pp_exp f1
@@ -96,7 +97,7 @@ module C = struct
   and pp_bindings ppf bindings =
     (* print bindings ; print _and_ between them *)
     pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-      (fun ppf (x,f1) ->     (* without paren; ok? *)
+      (fun ppf (x,f1) ->     (* always without paren; ok? *)
         fprintf ppf "%s = %a" x pp_exp f1)
       ppf bindings
 
@@ -149,25 +150,12 @@ module G = struct
          pp_exp_paren1 e1
          pp_exp_paren1 e2
          pp_exp e3
-
     | LetExp (_, bindings, e2) ->
-       pp_print_string ppf "let ";
-       (* print bindings *)
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,e1) ->
-           fprintf ppf "%s = %a" x pp_exp_paren1 e1)
-         ppf bindings;
-       fprintf ppf " in %a" pp_exp e2
-
+       fprintf ppf "let %a in %a"
+         pp_bindings bindings pp_exp e2
     | LetRecExp (_, bindings, e2) ->
-       pp_print_string ppf "let rec ";
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,y,t1,t2,e1) ->
-           fprintf ppf "%s (%s : %a) : %a = %a"
-             x y pp_ty t1 pp_ty t2 pp_exp_paren1 e1)
-         ppf bindings;
-       fprintf ppf " in %a" pp_exp e2
-
+       fprintf ppf "let rec %a in %a"
+         pp_rec_bindings bindings pp_exp e2
     | FunExp (_, x, t, e1) ->
        fprintf ppf "fun (%s : %a) -> %a"
          x pp_ty t pp_exp e1
