@@ -10,6 +10,5 @@
 # Run tests
 (
     cd test
-    make
-    ./test
+    make && ./test
 )
