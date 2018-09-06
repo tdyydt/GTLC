@@ -50,87 +50,6 @@ let prec_binop = function
   | Plus | Minus -> 4
   | Mult | Div -> 5
 
-(* Will be tested *)
-(* module G = struct
- *   open Syntax.G
- *   (\* precedence of expression *\)
- *   let prec_exp = function
- *     | LetExp _ | LetRecExp _ | FunExp _ -> 10
- *     | IfExp _ -> 20
- *     | BinOp (_, op, _, _) -> 30 + prec_binop op
- *     | AppExp _ -> 40
- *     | Var _ | ILit _ | BLit _ -> 50
- *
- *   (\* e1 > e2 : e1 associates stronger than e2 *\)
- *   let gt_exp e1 e2 = (prec_exp e1) > (prec_exp e2)
- *   (\* e1 >= e2 *\)
- *   let ge_exp e1 e2 = (prec_exp e1) >= (prec_exp e2)
- *
- *   let rec string_of_exp = function
- *     | Var (_,x) -> x
- *     | ILit (_,n) -> string_of_int n
- *     | BLit (_,b) -> string_of_bool b
- *     | BinOp (_, op, e1, e2) as e ->
- *        (\* Left assoc *\)
- *        sprintf "%s %s %s"
- *          (with_paren (gt_exp e e1) (string_of_exp e1)) (string_of_binop op)
- *          (with_paren (ge_exp e e2) (string_of_exp e2))
- *     | IfExp (_, e1, e2, e3) as e ->
- *        (\* e1,e2 は If 等ならカッコが要る *\)
- *        (\* e3 にカッコは不要 *\)
- *        sprintf "if %s then %s else %s"
- *          (with_paren (ge_exp e e1) (string_of_exp e1))
- *          (with_paren (ge_exp e e2) (string_of_exp e2))
- *          (string_of_exp e3)
- *
- *     | LetExp (_, bindings, e2) as e ->
- *        (\* string representation of bindings *\)
- *        let bindings_str =
- *          List.map (fun (x,e1) ->
- *              sprintf "%s = %s"
- *                x (with_paren (ge_exp e e1) (string_of_exp e1)))
- *            bindings in
- *        sprintf "let %s in %s"
- *          (String.concat " and " bindings_str)
- *          (string_of_exp e2)
- *
- *     | LetRecExp (_, bindings, e2) as e ->
- *        let bindings_str =
- *          List.map (fun (x,y,t1,t2,e1) ->
- *              sprintf "%s (%s : %s) : %s = %s"
- *                x y (string_of_ty t1) (string_of_ty t2)
- *                (with_paren (ge_exp e e1) (string_of_exp e1)))
- *            bindings in
- *        sprintf "let rec %s in %s"
- *          (String.concat " and " bindings_str)
- *          (string_of_exp e2)
- *
- *     | FunExp (_, x, t, e1) ->
- *        sprintf "fun (%s : %s) -> %s"
- *          x (string_of_ty t) (string_of_exp e1)
- *     | AppExp (_, e1, e2) as e ->
- *        (\* Left assoc *\)
- *        sprintf "%s %s"
- *          (with_paren (gt_exp e e1) (string_of_exp e1))
- *          (with_paren (ge_exp e e2) (string_of_exp e2))
- *
- *   let rec string_of_program = function
- *     | Exp e -> string_of_exp e
- *     | LetDecl bindings ->
- *        let bindings_str =
- *          List.map (fun (x,e1) ->
- *              sprintf "%s = %s" x (string_of_exp e1))
- *            bindings in
- *        sprintf "let %s" (String.concat " and " bindings_str)
- *     | LetRecDecl bindings ->
- *        let bindings_str =
- *          List.map (fun (x,y,t1,t2,e1) ->
- *              sprintf "%s (%s : %s) : %s = %s"
- *                x y (string_of_ty t1) (string_of_ty t2) (string_of_exp e1))
- *            bindings in
- *        sprintf "let rec %s" (String.concat " and " bindings_str)
- * end *)
-
 module C = struct
   open Syntax.C
   (* precedence of expression *)
@@ -158,7 +77,7 @@ module C = struct
     | Var (_,x) -> pp_print_string ppf x
     | ILit (_,n) -> fprintf ppf "%d" n
     | BLit (_,b) -> pp_print_string ppf (string_of_bool b)
-    | BinOp (_, op, f1, f2) ->
+    | BinOp (_, op, f1, f2) ->  (* Left assoc *)
        fprintf ppf "%a %a %a"
          pp_exp_paren2 f1
          pp_binop op
@@ -173,7 +92,7 @@ module C = struct
        pp_print_string ppf "let ";
        (* print bindings ; print _and_ between them *)
        pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,f1) ->
+         (fun ppf (x,f1) ->     (* no need of paren?? *)
            fprintf ppf "%s = %a" x pp_exp_paren1 f1)
          ppf bindings;
        fprintf ppf " in %a" pp_exp f2
@@ -204,7 +123,7 @@ module C = struct
        pp_print_string ppf "let ";
        (* print bindings ; print _and_ between them *)
        pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,f1) ->
+         (fun ppf (x,f1) ->     (* without paren; ok? *)
            fprintf ppf "%s = %a" x pp_exp f1)
          ppf bindings
 
@@ -214,6 +133,85 @@ module C = struct
          (fun ppf (x,y,t1,t2,f1) ->
            fprintf ppf "%s (%s : %a) : %a = %a"
              x y pp_ty t1 pp_ty t2 pp_exp f1)
+         ppf bindings
+
+end
+
+module G = struct
+  open Syntax.G
+  (* precedence of expression *)
+  let prec_exp = function
+    | LetExp _ | LetRecExp _ | FunExp _ -> 10
+    | IfExp _ -> 20
+    | BinOp (_, op, _, _) -> 30 + prec_binop op
+    | AppExp _ -> 40
+    | Var _ | ILit _ | BLit _ -> 50
+
+  (* e1 > e2 : e1 associates stronger than e2 *)
+  let gt_exp e1 e2 = (prec_exp e1) > (prec_exp e2)
+  (* e1 >= e2 *)
+  let ge_exp e1 e2 = (prec_exp e1) >= (prec_exp e2)
+
+  let rec pp_exp ppf e =
+    let pp_exp_paren1 ppf e1 = with_paren (ge_exp e e1) pp_exp ppf e1 in
+    let pp_exp_paren2 ppf e1 = with_paren (gt_exp e e1) pp_exp ppf e1 in
+    match e with
+    | Var (_,x) -> pp_print_string ppf x
+    | ILit (_,n) -> fprintf ppf "%d" n
+    | BLit (_,b) -> pp_print_string ppf (string_of_bool b)
+    | BinOp (_, op, e1, e2) ->
+       fprintf ppf "%a %a %a"
+         pp_exp_paren2 e1
+         pp_binop op
+         pp_exp_paren1 e2
+    | IfExp (_, e1, e2, e3) ->
+       fprintf ppf "if %a then %a else %a"
+         pp_exp_paren1 e1
+         pp_exp_paren1 e2
+         pp_exp e3
+
+    | LetExp (_, bindings, e2) ->
+       pp_print_string ppf "let ";
+       (* print bindings *)
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,e1) ->
+           fprintf ppf "%s = %a" x pp_exp_paren1 e1)
+         ppf bindings;
+       fprintf ppf " in %a" pp_exp e2
+
+    | LetRecExp (_, bindings, e2) ->
+       pp_print_string ppf "let rec ";
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,y,t1,t2,e1) ->
+           fprintf ppf "%s (%s : %a) : %a = %a"
+             x y pp_ty t1 pp_ty t2 pp_exp_paren1 e1)
+         ppf bindings;
+       fprintf ppf " in %a" pp_exp e2
+
+    | FunExp (_, x, t, e1) ->
+       fprintf ppf "fun (%s : %a) -> %a"
+         x pp_ty t pp_exp e1
+    | AppExp (_, e1, e2) ->
+       fprintf ppf "%a %a"
+         pp_exp_paren2 e1
+         pp_exp_paren1 e2
+
+  let rec pp_prog ppf = function
+    | Exp e -> pp_exp ppf e
+    | LetDecl bindings ->
+       pp_print_string ppf "let ";
+       (* print bindings ; print _and_ between them *)
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,e1) ->
+           fprintf ppf "%s = %a" x pp_exp e1)
+         ppf bindings
+
+    | LetRecDecl bindings ->
+       pp_print_string ppf "let rec ";
+       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+         (fun ppf (x,y,t1,t2,e1) ->
+           fprintf ppf "%s (%s : %a) : %a = %a"
+             x y pp_ty t1 pp_ty t2 pp_exp e1)
          ppf bindings
 
 end
