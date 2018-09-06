@@ -1,11 +1,9 @@
-open Printf
+open Util.Error
+open Format
 open Syntax
-open Syntax.G
 open Typing
-open Typing.G
 open Translate
 open Eval
-open Stringify
 
 (* Status:
  * 0 => ok
@@ -20,61 +18,68 @@ let _ =
   Js.export "GTLC" @@
     object%js
       method eval input =
-        (* expressions only *)
         let s = Js.to_string input ^ ";;" in
         let lexbuf = Lexing.from_string s in
         try
           let pgm = Parser.toplevel Lexer.main lexbuf in
+          (* expressions only *)
           (match pgm with
            | Exp e ->
+              let open Typing in
               let gamma = Environment.empty in
-              let t = ty_exp gamma e in
+              let t = G.ty_exp gamma e in
               let f, t' = translate_exp gamma e in
               (* Should be t = t' *)
               let env = Environment.empty in
               (try
                  let v = eval_exp env f in
-                 let res = sprintf "val - : %s = %s"
-                             (string_of_ty t) (string_of_value v) in
+                 let open Pp in
+                 let res = asprintf "val - : %a = %a" pp_ty t pp_value v in
                  object%js
                    val status = 0
                    val detail = Js.string res
-                   val t = Js.string (string_of_ty t)
-                   val f = Js.string (C.string_of_exp f)
-                   val v = Js.string (string_of_value v)
+                   val t = Js.string (asprintf "%a" pp_ty t)
+                   val f = Js.string (asprintf "%a" C.pp_exp f)
+                   val v = Js.string (asprintf "%a" pp_value v)
                  end
                with
-               | Blame (tag1, tag2) ->
-                  let result = sprintf "Blame: %s is incompatible with tag %s"
-                                 (string_of_tag tag2) (string_of_tag tag1) in
+               | Blame (r, plr, tag1, tag2) ->
+                  let open Pp in
+                  let result =
+                    begin match plr with
+                    | Pos -> asprintf "%a\nBlame on the expression side: %s => %s\n"
+                               print_range r (string_of_tag tag1) (string_of_tag tag2)
+                    | Neg -> asprintf "%a\nBlame on the environment side: %s => %s\n"
+                               print_range r (string_of_tag tag1) (string_of_tag tag2)
+                    end in
                   object%js
                     val status = 3
                     val detail = emptystr
-                    val t = Js.string (string_of_ty t)
-                    val f = Js.string (C.string_of_exp f)
+                    val t = Js.string (asprintf "%a" pp_ty t)
+                    val f = Js.string (asprintf "%a" C.pp_exp f)
                     val v = Js.string result
                   end)
            | LetDecl _ | LetRecDecl _ -> (* not implemented yet *)
               let m = "Let declarations are not supported. Use let-in syntax instead." in
               object%js
-                val status = 4  (* detail error *)
+                val status = 4  (* not implemented *)
                 val detail = Js.string m
                 val t = emptystr
                 val f = emptystr
                 val v = emptystr
               end)
         with
-        | Failure m ->          (* lexing *)
+        | Failure m ->        (* e.g. lexing *)
            object%js
              val status = 1
-             val detail = Js.string m
+             val detail = Js.string (asprintf "Failure: %s\n" m)
              val t = emptystr
              val f = emptystr
              val v = emptystr
            end
         | Parser.Error ->       (* Menhir *)
            let token = Lexing.lexeme lexbuf in
-           let m = sprintf "Parser.Error: unexpected token: %s\n" token in
+           let m = asprintf "Parser.Error: unexpected token: %s\n" token in
            object%js
              val status = 1
              val detail = Js.string m
@@ -82,42 +87,28 @@ let _ =
              val f = emptystr
              val v = emptystr
            end
-        | Syntax_error m ->
+        | Syntax_error (r, m) ->
            object%js
              val status = 1
-             val detail = Js.string m
+             val detail = Js.string (asprintf "%a\n%s\n" print_range r m)
              val t = emptystr
              val f = emptystr
              val v = emptystr
            end
-        | Typing_error m ->
+
+        | Type_error (r, msg) ->
            object%js
              val status = 2
              val detail = emptystr
-             val t = Js.string m
+             val t = Js.string (asprintf "%a\n%s\n" print_range r msg)
              val f = emptystr
              val v = emptystr
            end
-        | Eval_error m ->
+
+        | CI_bug m | Eval_bug m ->
            object%js
              val status = 4
              val detail = Js.string m
-             val t = emptystr
-             val f = emptystr
-             val v = emptystr
-           end
-        | CI_error m ->
-           object%js
-             val status = 4
-             val detail = Js.string m
-             val t = emptystr
-             val f = emptystr
-             val v = emptystr
-           end
-        | _ ->
-           object%js
-             val status = 4
-             val detail = Js.string "Unexpected Error"
              val t = emptystr
              val f = emptystr
              val v = emptystr
