@@ -1,18 +1,7 @@
 open Util.Error
 open Syntax
 
-(* 0,1,2 is the number of types in arguments *)
-exception Type_error0 of range * string
-exception Type_error1 of
-            range
-            * ((Format.formatter -> ty -> unit) -> ty -> unit, Format.formatter, unit) Pervasives.format
-            * ty
-exception Type_error2 of
-            range
-            * ((Format.formatter -> ty -> unit) -> ty ->
-               (Format.formatter -> ty -> unit) -> ty -> unit, Format.formatter, unit) Pervasives.format
-            * ty * ty
-
+exception Type_error of range * string
 
 type tyenv = ty Environment.t
 
@@ -58,7 +47,8 @@ let check_tyopt (r : range) (t1 : ty) (tyopt : ty option) : ty =
   | Some t2 ->
      (* t2 is type annotation given by programmer *)
      if are_consistent t1 t2 then t2
-     else raise (Type_error2 (r, "%a is not consistent with %a", t1, t2))
+     else raise (Type_error (r, Format.asprintf "%a is not consistent with %a"
+                                  Pp.pp_ty t1 Pp.pp_ty t2))
   | None -> t1
 
 module G = struct
@@ -73,7 +63,7 @@ module G = struct
           let t = Environment.find x gamma in
           check_tyopt r t tyopt
         with
-        | Not_found -> raise (Type_error0 (r, "Var: Not bound: " ^ x))
+        | Not_found -> raise (Type_error (r, "Var: Not bound: " ^ x))
       end
     | ILit (r,_) -> check_tyopt r TyInt tyopt
     | BLit (r,_) -> check_tyopt r TyBool tyopt
@@ -83,12 +73,13 @@ module G = struct
        let (u1, u2, u3) = ty_binop op in
        if are_consistent t1 u1 then
          if are_consistent t2 u2 then check_tyopt r u3 tyopt
-         else raise (Type_error2 (range_of_exp e2,
-                                  "BinOp (right): %a is not consistent with %a",
-                                  t2, u2))
-       else raise (Type_error2 (range_of_exp e1,
-                                "BinOp (left): %a is not consistent with %a",
-                                t1, u1))
+         else raise (Type_error
+                       (range_of_exp e2,
+                        Format.asprintf "BinOp (right): %a is not consistent with %a"
+                          Pp.pp_ty t2 Pp.pp_ty u2))
+       else raise (Type_error (range_of_exp e1,
+                               Format.asprintf "BinOp (left): %a is not consistent with %a"
+                                 Pp.pp_ty t1 Pp.pp_ty u1))
 
     | IfExp (r, e1, e2, e3) ->
        let t1 = ty_exp gamma e1 in
@@ -99,22 +90,27 @@ module G = struct
          | Some t ->           (* t is geven annotatation & respected *)
             if are_consistent t2 t then
               if are_consistent t3 t then t
-              else raise (Type_error2 (range_of_exp e3,
-                                       "If (else): %a is not consistent with %a",
-                                       t3, t))
-            else raise (Type_error2 (range_of_exp e2,
-                                     "If (then): %a is not consistent with %a",
-                                     t2, t))
+              else raise (Type_error
+                            (range_of_exp e3,
+                             Format.asprintf "If (else): %a is not consistent with %a"
+                               Pp.pp_ty t3 Pp.pp_ty t))
+            else raise (Type_error
+                          (range_of_exp e2,
+                           Format.asprintf "If (then): %a is not consistent with %a"
+                             Pp.pp_ty t2 Pp.pp_ty t))
          | None ->
             begin match meet t2 t3 with
             | Some u -> u
-            | None -> raise (Type_error2
-                               (r, "If (branches): Meet is undefined on %a and %a", t2, t3))
+            | None -> raise (Type_error
+                               (r, Format.asprintf
+                                     "If (branches): Meet is undefined on %a and %a"
+                                     Pp.pp_ty t2 Pp.pp_ty t3))
             end
          end
-       else raise (Type_error1 (range_of_exp e1,
-                                "If (test): %a is not consistent with bool",
-                                t1))
+       else raise (Type_error
+                     (range_of_exp e1,
+                      Format.asprintf "If (test): %a is not consistent with bool"
+                        Pp.pp_ty t1))
 
     | LetExp (r, bindings, e2) ->
        let gamma', _ = ty_bindings gamma bindings in
@@ -129,11 +125,12 @@ module G = struct
        | Some (t11, t12) ->
           let t2 = ty_exp gamma e2 in
           if are_consistent t2 t11 then check_tyopt r t12 tyopt
-          else raise (Type_error2 (r, "App: %a and %a are not consistent",
-                                   t2, t11))
-       | None -> raise (Type_error1 (range_of_exp e1,
-                                     "App: %a doesn't match with a function type",
-                                     t1))
+          else raise (Type_error (r, Format.asprintf "App: %a and %a are not consistent"
+                                       Pp.pp_ty t2 Pp.pp_ty t11))
+       | None -> raise (Type_error
+                          (range_of_exp e1,
+                           Format.asprintf "App: %a doesn't match with a function type"
+                             Pp.pp_ty t1))
        end
     | LetRecExp (r, bindings, e2) ->
        let gamma1, _ = ty_rec_bindings gamma bindings in

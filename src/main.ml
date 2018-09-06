@@ -57,19 +57,9 @@ let rec read_eval_print gamma env =
      printf "%s\n" msg;
      read_eval_print gamma env
 
-  | Type_error0 (r, msg) ->
+  | Type_error (r, msg) ->
      printf "%a\n" print_range r;
      printf "%s\n" msg;
-     read_eval_print gamma env
-  | Type_error1 (r, fmt, t) ->
-     let open Pp in
-     printf "%a\n" print_range r;
-     printf (fmt ^^ "\n") pp_ty t;
-     read_eval_print gamma env
-  | Type_error2 (r, fmt, t1, t2) ->
-     let open Pp in
-     printf "%a\n" print_range r;
-     printf (fmt ^^ "\n") pp_ty t1 pp_ty t2;
      read_eval_print gamma env
 
   | Blame (r, plr, tag1, tag2) ->
