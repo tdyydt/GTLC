@@ -50,17 +50,31 @@ let rec read_eval_print gamma env =
      fprintf std_formatter "Parser.Error: unexpected token: %s\n" token;
      Lexing.flush_input lexbuf;
      read_eval_print gamma env
-  | Syntax_error s | Typing_error s | CI_error s | Eval_error s ->
+
+  | Type_error0 (r, msg) ->
+     fprintf std_formatter "%a\n" print_range r;
+     fprintf std_formatter "%s\n" msg;
+     read_eval_print gamma env
+  | Type_error1 (r, fmt, t) ->
+     let open Pp in
+     fprintf std_formatter "%a\n" print_range r;
+     fprintf std_formatter (fmt ^^ "\n") pp_ty t
+  | Type_error2 (r, fmt, t1, t2) ->
+     let open Pp in
+     fprintf std_formatter "%a\n" print_range r;
+     fprintf std_formatter (fmt ^^ "\n") pp_ty t1 pp_ty t2
+
+  | Syntax_error s | CI_error s | Eval_error s ->
      fprintf std_formatter "%s\n" s;
      read_eval_print gamma env
   | Blame (r, plr, tag1, tag2) ->
+     fprintf std_formatter "%a\n" print_range r;
      begin match plr with
      | Pos -> fprintf std_formatter "Blame on the expression side: %s => %s\n"
                 (string_of_tag tag1) (string_of_tag tag2)
      | Neg -> fprintf std_formatter "Blame on the environment side: %s => %s\n"
                 (string_of_tag tag1) (string_of_tag tag2)
      end;
-     fprintf std_formatter "%a\n" print_range r;
      read_eval_print gamma env
 
 let initial_gamma = Environment.empty
