@@ -21,14 +21,13 @@ let rec read_eval_print gamma env =
         fprintf std_formatter "val %s : %a\n" x pp_ty t)
       ty_bindings;
 
-    (* Cast-Insertion Translation *)
+    (* Cast-insertion Translation *)
     print_string "*** Cast Insertion ***\n";
     let open Syntax in
     let ((q : C.program), ty_bindings') = translate_prog gamma p in
-    (* check soundness *)
+    (* check soundness ; equality of lists *)
     assert (ty_bindings = ty_bindings');
-    (* result of translation *)
-    (* let open Stringify in *)
+    (* Show result of translation *)
     let open Pp in
     fprintf std_formatter "%a\n" C.pp_prog q;
 

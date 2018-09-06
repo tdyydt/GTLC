@@ -127,7 +127,8 @@ and translate_bindings : tyenv -> G.bindings -> C.bindings * tyenv * (id * ty) l
       gamma',
       List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
 
-
+(* ty_bindings (in 2nd retval) is used only for soundness check,
+ * and actually is not necessary. *)
 let translate_prog : tyenv -> G.program -> C.program * (id * ty) list =
   fun gamma ->
   function
