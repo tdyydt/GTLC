@@ -4,7 +4,7 @@ install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
-  - opam install -y menhir ounit
+  - opam install -y omake menhir ounit
 script:
   - ./run-test.sh
 env:
