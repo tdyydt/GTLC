@@ -35,7 +35,7 @@ module G = struct
     | BLit of range * bool
     | BinOp of range * binOp * exp * exp
     | IfExp of range * exp * exp * exp
-    | LetExp of range * (id * exp) list * exp
+    | LetExp of range * bindings * exp
     (* Type annotation is mandatory at this moment. *)
     (* FunExp (x,t,e) ==> [fun (x:t) -> e] *)
     | FunExp of range * id * ty * exp
@@ -43,14 +43,17 @@ module G = struct
     (* LetRec ([(f,x,t1,t2,e1)],e2) ==>
      * [let rec f (x:t1) : t2 = e1 in e2]
      * where t2 is return type annotation *)
-    | LetRecExp of range * (id * id * ty * ty * exp) list * exp
+    | LetRecExp of range * rec_bindings * exp
+
+  and bindings = (id * exp) list
+  and rec_bindings = (id * id * ty * ty * exp) list
 
   type program =
     | Exp of exp
     (* LetDecl(x,e) ==> [let x = e] *)
-    | LetDecl of (id * exp) list
+    | LetDecl of bindings
     (* LetRecDecl([(x,y,t1,t2)],e) ==> [let rec x (y:t1) : t2 = e] *)
-    | LetRecDecl of (id * id * ty * ty * exp) list
+    | LetRecDecl of rec_bindings
 
   let range_of_exp = function
     | Var (r,_) | ILit (r,_) | BLit (r,_)
@@ -74,10 +77,13 @@ module C = struct
     (* CastExp(f,t1,t2) ==> [f: t1 => t2]  *)
     | CastExp of range * exp * ty * ty
 
+  and bindings = (id * exp) list
+  and rec_bindings = (id * id * ty * ty * exp) list
+
   type program =
     | Exp of exp
-    | LetDecl of (id * exp) list
-    | LetRecDecl of (id * id * ty * ty * exp) list
+    | LetDecl of bindings
+    | LetRecDecl of rec_bindings
 
   let range_of_exp = function
     | Var (r,_) | ILit (r,_) | BLit (r,_)

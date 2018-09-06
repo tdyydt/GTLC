@@ -117,9 +117,7 @@ module G = struct
                                 t1))
 
     | LetExp (r, bindings, e2) ->
-       let ty_bindings =
-         List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
-       let gamma' = Environment.add_all ty_bindings gamma in
+       let gamma', _ = ty_bindings gamma bindings in
        let t2 = ty_exp gamma' e2 in check_tyopt r t2 tyopt
 
     | FunExp (r, x, t, e) ->
@@ -142,14 +140,15 @@ module G = struct
        let t2 = ty_exp gamma1 e2 in check_tyopt r t2 tyopt
 
   (* auxiliary function for typing LetRec bindings *)
-  and ty_rec_bindings : tyenv -> (id * id * ty * ty * exp) list -> tyenv * (id * ty) list =
+  and ty_rec_bindings : tyenv -> rec_bindings -> tyenv * (id * ty) list =
     fun gamma bindings ->
     let ty_bindings =
       List.map (fun (x,_,paraty,retty,_) -> (x, TyFun (paraty,retty)))
         bindings in
-    (* n個の関数を束縛 *)
+    (* Bind n functions in the environment *)
     let gamma1 = Environment.add_all ty_bindings gamma in
-    (* まず，n個のe1を型付け・型注釈が正しいことを確認する *)
+    (* Type each expression (e1) in the bindings,
+     * and check the type is consistent with the annotated type (retty) *)
     List.iter (fun (x,y,paraty,retty,e1) ->
         let gamma2 = Environment.add y paraty gamma1 in
         (* retty is given by a programmer *)
@@ -158,15 +157,18 @@ module G = struct
       bindings;
     (gamma1, ty_bindings)
 
+  and ty_bindings : tyenv -> bindings -> tyenv * (id * ty) list =
+    fun gamma bindings ->
+    let ty_bindings =
+      List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
+    let gamma' = Environment.add_all ty_bindings gamma in
+    (gamma', ty_bindings)
+
   let ty_prog : tyenv -> program -> tyenv * (id * ty) list =
     fun gamma ->
     function
     | Exp e ->
        let t = ty_exp gamma e in (gamma, [("-", t)])
-    | LetDecl bindings ->
-       let ty_bindings =
-         List.map (fun (x,e1) -> (x, ty_exp gamma e1)) bindings in
-       let gamma' = Environment.add_all ty_bindings gamma in
-       (gamma', ty_bindings)
+    | LetDecl bindings -> ty_bindings gamma bindings
     | LetRecDecl bindings -> ty_rec_bindings gamma bindings
 end
