@@ -8,5 +8,12 @@ parser.output
 parser.automaton
 parser.conflicts
 
+# omake
+.omakedb
+.omakedb.lock
+*.omc
+*.o
+*.a
+
 # binary
 gtlc

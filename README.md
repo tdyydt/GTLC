@@ -14,6 +14,7 @@ Be aware that this implementation is incomplete.
 
 ## Requirements
 
+- OMake
 - Menhir
 - OUnit2 (optional; for unit testing)
 - js\_of\_ocaml, js\_of\_ocaml-ppx (optional; for web)
@@ -22,8 +23,7 @@ Be aware that this implementation is incomplete.
 
 ```sh
 cd src
-make depend
-make
+omake
 ./gtlc
 ```
 

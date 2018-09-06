@@ -3,8 +3,7 @@
 # Compile
 (
     cd src
-    make depend
-    make
+    omake
 )
 
 # Run tests
