@@ -7,7 +7,7 @@ MENHIROPTIONS=--explain --infer
 PROGNAME=gtlc
 
 # The order matters. Fix needed.
-OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo stringify.cmo \
+OBJS=util.cmo syntax.cmo environment.cmo parser.cmo lexer.cmo \
      typing.cmo translate.cmo eval.cmo pp.cmo
 
 DEPEND += lexer.ml parser.ml
