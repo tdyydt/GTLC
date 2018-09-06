@@ -76,10 +76,7 @@ let rec eval_exp : env -> exp -> value = fun env ->
      | _ -> raise (Eval_bug ("If: Test expression must be boolean"))
      end
   | LetExp (_, bindings, f2) ->
-     let val_bindings =
-       List.map (fun (x,f1) -> (x, eval_exp env f1))
-         bindings in
-     let env' = Environment.add_all val_bindings env in
+     let env', _ = eval_bindings env bindings in
      eval_exp env' f2
 
   | FunExp (_, x, _, f) -> FunV (x, f, ref env)
@@ -88,17 +85,32 @@ let rec eval_exp : env -> exp -> value = fun env ->
      let v2 = eval_exp env f2 in
      eval_app v1 v2
   | LetRecExp (_, bindings, f2) ->
-     let dummy_env = ref Environment.empty in
-     let val_bindings =
-       List.map (fun (x,y,_,_,f1) -> (x, FunV (y,f1,dummy_env)))
-         bindings in
-     (* Overwrite dummy_env *)
-     let new_env = Environment.add_all val_bindings env in
-     dummy_env := new_env;
+     let new_env, _ = eval_rec_bindings env bindings in
      eval_exp new_env f2
 
   | CastExp (r, f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2 r Pos
+
+(* let bindings *)
+and eval_bindings : env -> bindings -> env * (id * value) list =
+  fun env bindings ->
+  let val_bindings =
+    List.map (fun (x,f1) -> (x, eval_exp env f1))
+      bindings in
+  let env' = Environment.add_all val_bindings env in
+  (env', val_bindings)
+
+(* let-rec bindings *)
+and eval_rec_bindings : env -> rec_bindings -> env * (id * value) list =
+  fun env bindings ->
+  let dummy_env = ref Environment.empty in
+  let val_bindings =
+    List.map (fun (x,y,_,_,f1) -> (x, FunV (y,f1,dummy_env)))
+      bindings in
+  (* Overwrite dummy_env *)
+  let new_env = Environment.add_all val_bindings env in
+  dummy_env := new_env;
+  (new_env, val_bindings)
 
 (* evaluate application [v1 v2] *)
 and eval_app (v1 : value) (v2 : value) : value = match v1 with
@@ -167,17 +179,5 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) (r : range) (p : polarity) : value
 let eval_prog : env -> program -> env * (id * value) list = fun env ->
   function
   | Exp f -> let v = eval_exp env f in (env, [("-", v)])
-  | LetDecl bindings ->
-     let val_bindings =
-       List.map (fun (x,f1) -> (x, eval_exp env f1))
-         bindings in
-     let env' = Environment.add_all val_bindings env in
-     (env', val_bindings)
-  | LetRecDecl bindings ->
-     let dummy_env = ref Environment.empty in
-     let val_bindings =
-       List.map (fun (x,y,_,_,f1) -> (x, FunV (y,f1,dummy_env)))
-         bindings in
-     let new_env = Environment.add_all val_bindings env in
-     dummy_env := new_env;
-     (new_env, val_bindings)
+  | LetDecl bindings -> eval_bindings env bindings
+  | LetRecDecl bindings -> eval_rec_bindings env bindings

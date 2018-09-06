@@ -75,22 +75,12 @@ module C = struct
          pp_exp f3
 
     | LetExp (_, bindings, f2) ->
-       pp_print_string ppf "let ";
-       (* print bindings ; print _and_ between them *)
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,f1) ->     (* no need of paren?? *)
-           fprintf ppf "%s = %a" x pp_exp_paren1 f1)
-         ppf bindings;
-       fprintf ppf " in %a" pp_exp f2
+       fprintf ppf "let %a in %a"
+         pp_bindings bindings pp_exp f2
 
     | LetRecExp (_, bindings, f2) ->
-       pp_print_string ppf "let rec ";
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,y,t1,t2,f1) ->
-           fprintf ppf "%s (%s : %a) : %a = %a"
-             x y pp_ty t1 pp_ty t2 pp_exp_paren1 f1)
-         ppf bindings;
-       fprintf ppf " in %a" pp_exp f2
+       fprintf ppf "let rec %a in %a"
+         pp_rec_bindings bindings pp_exp f2
 
     | FunExp (_, x, t, f1) ->
        fprintf ppf "fun (%s : %a) -> %a"
@@ -103,23 +93,27 @@ module C = struct
        fprintf ppf "%a : %a => %a"
          pp_exp_paren1 f1 pp_ty t1 pp_ty t2
 
+  and pp_bindings ppf bindings =
+    (* print bindings ; print _and_ between them *)
+    pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+      (fun ppf (x,f1) ->     (* without paren; ok? *)
+        fprintf ppf "%s = %a" x pp_exp f1)
+      ppf bindings
+
+  and pp_rec_bindings ppf bindings =
+    pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+      (fun ppf (x,y,t1,t2,f1) ->
+        fprintf ppf "%s (%s : %a) : %a = %a"
+          x y pp_ty t1 pp_ty t2 pp_exp f1)
+      ppf bindings
+
+
   let rec pp_prog ppf = function
     | Exp f -> pp_exp ppf f
     | LetDecl bindings ->
-       pp_print_string ppf "let ";
-       (* print bindings ; print _and_ between them *)
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,f1) ->     (* without paren; ok? *)
-           fprintf ppf "%s = %a" x pp_exp f1)
-         ppf bindings
-
+       fprintf ppf "let %a" pp_bindings bindings
     | LetRecDecl bindings ->
-       pp_print_string ppf "let rec ";
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,y,t1,t2,f1) ->
-           fprintf ppf "%s (%s : %a) : %a = %a"
-             x y pp_ty t1 pp_ty t2 pp_exp f1)
-         ppf bindings
+       fprintf ppf "let rec %a" pp_rec_bindings bindings
 
 end
 
@@ -182,24 +176,26 @@ module G = struct
          pp_exp_paren2 e1
          pp_exp_paren1 e2
 
+  and pp_bindings ppf bindings =
+    (* print bindings ; print _and_ between them *)
+    pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+      (fun ppf (x,e1) ->
+        fprintf ppf "%s = %a" x pp_exp e1)
+      ppf bindings
+
+  and pp_rec_bindings ppf bindings =
+    pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
+      (fun ppf (x,y,t1,t2,e1) ->
+        fprintf ppf "%s (%s : %a) : %a = %a"
+          x y pp_ty t1 pp_ty t2 pp_exp e1)
+      ppf bindings
+
   let rec pp_prog ppf = function
     | Exp e -> pp_exp ppf e
     | LetDecl bindings ->
-       pp_print_string ppf "let ";
-       (* print bindings ; print _and_ between them *)
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,e1) ->
-           fprintf ppf "%s = %a" x pp_exp e1)
-         ppf bindings
-
+       fprintf ppf "let %a" pp_bindings bindings
     | LetRecDecl bindings ->
-       pp_print_string ppf "let rec ";
-       pp_print_list ~pp_sep:(fun ppf () -> fprintf ppf " and ")
-         (fun ppf (x,y,t1,t2,e1) ->
-           fprintf ppf "%s (%s : %a) : %a = %a"
-             x y pp_ty t1 pp_ty t2 pp_exp e1)
-         ppf bindings
-
+       fprintf ppf "let rec %a" pp_rec_bindings bindings
 end
 
 open Eval
