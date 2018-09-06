@@ -70,10 +70,10 @@ module C = struct
     | BLit of range * bool
     | BinOp of range * binOp * exp * exp
     | IfExp of range * exp * exp * exp
-    | LetExp of range * (id * exp) list * exp
+    | LetExp of range * bindings * exp
     | FunExp of range * id * ty * exp
     | AppExp of range * exp * exp
-    | LetRecExp of range * (id * id * ty * ty * exp) list * exp
+    | LetRecExp of range * rec_bindings * exp
     (* CastExp(f,t1,t2) ==> [f: t1 => t2]  *)
     | CastExp of range * exp * ty * ty
 

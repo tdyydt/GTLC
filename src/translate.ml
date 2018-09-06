@@ -66,18 +66,9 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
        end
      else raise (CI_bug "If (test)")
   | G.LetExp (r, bindings, e2) ->
-     let new_bindings =
-       List.map (fun (x,e1) ->
-           let f1, t1 = translate_exp gamma e1 in (x, f1, t1))
-         bindings in
-     let gamma' =
-       Environment.add_all
-         (List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
-         gamma in
+     let new_bindings, gamma', _ = translate_bindings gamma bindings in
      let f2, t2 = translate_exp gamma' e2 in
-     let f = C.LetExp (r,
-                       List.map (fun (x,f1,_) -> (x,f1)) new_bindings,
-                       f2)
+     let f = C.LetExp (r, new_bindings, f2)
      in translate_tyopt f t2 tyopt
 
   | G.FunExp (r, x, t, e) ->
@@ -103,21 +94,38 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
      translate_tyopt (C.LetRecExp (r, new_bindings, f2)) t2 tyopt
 
 (* auxiliary function to translate LetRec bindings *)
-and translate_rec_bindings : tyenv -> (id * id * ty * ty * G.exp) list -> (id * id * ty * ty * C.exp) list * tyenv * (id * ty) list =
+and translate_rec_bindings : tyenv -> G.rec_bindings -> C.rec_bindings * tyenv * (id * ty) list =
   fun gamma bindings ->
   let ty_bindings =
     List.map (fun (x,_,paraty,retty,_) -> (x, TyFun (paraty,retty)))
       bindings in
   let gamma1 = Environment.add_all ty_bindings gamma in
-  let new_bindings =            (* LetRec bindings in CC *)
+  let new_bindings =
     List.map (fun (x,y,paraty,retty,e1) ->
         let gamma2 = Environment.add y paraty gamma1 in
         (* retty is given by a programmer *)
         let f1, retty' = translate_exp gamma2 e1 ~tyopt:(Some retty) in
         assert (retty = retty');
         (x,y,paraty,retty,f1))
-      bindings
-  in (new_bindings, gamma1, ty_bindings)
+      bindings in
+  (* new_bindings : LetRec bindings in CC
+   * gamma1 : bindings are added to the given tyenv (gamma)
+   * ty_bindings : Only for soundness check in main, gamma1 is enough for LetRecExp *)
+  (new_bindings, gamma1, ty_bindings)
+
+and translate_bindings : tyenv -> G.bindings -> C.bindings * tyenv * (id * ty) list =
+  fun gamma bindings ->
+     let new_bindings : (id * C.exp * ty) list =
+       List.map (fun (x,e1) ->
+           let f1, t1 = translate_exp gamma e1 in (x, f1, t1))
+         bindings in
+     let gamma' =
+       Environment.add_all
+         (List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
+         gamma in
+     (List.map (fun (x,f1,_) -> (x,f1)) new_bindings,
+      gamma',
+      List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
 
 
 let translate_prog : tyenv -> G.program -> C.program * (id * ty) list =
@@ -126,12 +134,8 @@ let translate_prog : tyenv -> G.program -> C.program * (id * ty) list =
   | G.Exp e ->
      let f, t = translate_exp gamma e in (C.Exp f, [("-", t)])
   | G.LetDecl bindings ->
-     let new_bindings =
-       List.map (fun (x,e1) ->
-           let f1, t1 = translate_exp gamma e1 in (x, f1, t1))
-         bindings in
-     (C.LetDecl (List.map (fun (x,f1,_) -> (x,f1)) new_bindings),
-      List.map (fun (x,_,t1) -> (x,t1)) new_bindings)
+     let new_bindings, _, ty_bindings = translate_bindings gamma bindings
+     in (C.LetDecl new_bindings, ty_bindings)
   | G.LetRecDecl bindings ->
      let new_bindings, _, ty_bindings = translate_rec_bindings gamma bindings
      in (C.LetRecDecl new_bindings, ty_bindings)
