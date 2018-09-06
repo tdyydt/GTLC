@@ -73,7 +73,7 @@ module G = struct
           let t = Environment.find x gamma in
           check_tyopt r t tyopt
         with
-        | Not_found -> raise (Type_error0 (r, "Var: Nnot bound: " ^ x))
+        | Not_found -> raise (Type_error0 (r, "Var: Not bound: " ^ x))
       end
     | ILit (r,_) -> check_tyopt r TyInt tyopt
     | BLit (r,_) -> check_tyopt r TyBool tyopt

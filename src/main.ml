@@ -63,11 +63,13 @@ let rec read_eval_print gamma env =
   | Type_error1 (r, fmt, t) ->
      let open Pp in
      fprintf std_formatter "%a\n" print_range r;
-     fprintf std_formatter (fmt ^^ "\n") pp_ty t
+     fprintf std_formatter (fmt ^^ "\n") pp_ty t;
+     read_eval_print gamma env
   | Type_error2 (r, fmt, t1, t2) ->
      let open Pp in
      fprintf std_formatter "%a\n" print_range r;
-     fprintf std_formatter (fmt ^^ "\n") pp_ty t1 pp_ty t2
+     fprintf std_formatter (fmt ^^ "\n") pp_ty t1 pp_ty t2;
+     read_eval_print gamma env
 
   | Blame (r, plr, tag1, tag2) ->
      fprintf std_formatter "%a\n" print_range r;
