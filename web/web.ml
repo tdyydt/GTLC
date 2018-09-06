@@ -47,23 +47,22 @@ let _ =
                   let open Pp in
                   let result =
                     begin match plr with
-                    | Pos -> asprintf "%a\nBlame on the expression side: %s => %s\n"
-                               print_range r (string_of_tag tag1) (string_of_tag tag2)
-                    | Neg -> asprintf "%a\nBlame on the environment side: %s => %s\n"
-                               print_range r (string_of_tag tag1) (string_of_tag tag2)
+                    | Pos -> asprintf "Blame on the expression side: %s => %s\n"
+                               (string_of_tag tag1) (string_of_tag tag2)
+                    | Neg -> asprintf "Blame on the environment side: %s => %s\n"
+                               (string_of_tag tag1) (string_of_tag tag2)
                     end in
                   object%js
                     val status = 3
-                    val detail = emptystr
+                    val detail = Js.string (asprintf "%a" print_range r)
                     val t = Js.string (asprintf "%a" pp_ty t)
                     val f = Js.string (asprintf "%a" C.pp_exp f)
                     val v = Js.string result
                   end)
            | LetDecl _ | LetRecDecl _ -> (* not implemented yet *)
-              let m = "Let declarations are not supported. Use let-in syntax instead." in
               object%js
                 val status = 4  (* not implemented *)
-                val detail = Js.string m
+                val detail = Js.string ("Let declarations are not supported. Use let-in syntax instead.")
                 val t = emptystr
                 val f = emptystr
                 val v = emptystr
@@ -72,14 +71,14 @@ let _ =
         | Failure m ->        (* e.g. lexing *)
            object%js
              val status = 1
-             val detail = Js.string (asprintf "Failure: %s\n" m)
+             val detail = Js.string (asprintf "Failure: %s" m)
              val t = emptystr
              val f = emptystr
              val v = emptystr
            end
         | Parser.Error ->       (* Menhir *)
            let token = Lexing.lexeme lexbuf in
-           let m = asprintf "Parser.Error: unexpected token: %s\n" token in
+           let m = asprintf "Parser.Error: unexpected token: %s" token in
            object%js
              val status = 1
              val detail = Js.string m
@@ -90,6 +89,7 @@ let _ =
         | Syntax_error (r, m) ->
            object%js
              val status = 1
+             (* TODO: replace newline with br *)
              val detail = Js.string (asprintf "%a\n%s\n" print_range r m)
              val t = emptystr
              val f = emptystr
@@ -99,8 +99,8 @@ let _ =
         | Type_error (r, msg) ->
            object%js
              val status = 2
-             val detail = emptystr
-             val t = Js.string (asprintf "%a\n%s\n" print_range r msg)
+             val detail = Js.string (asprintf "%a" print_range r)
+             val t = Js.string msg
              val f = emptystr
              val v = emptystr
            end
