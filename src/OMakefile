@@ -18,14 +18,12 @@
 # The standard OMakefile.
 # You will usually need to modify this file for your project.
 
-# Delete this line once you have configured this file
-eprintln($(CWD)/OMakefile is not configured)
-
 ########################################################################
 # Phony targets are scoped, so you probably want to declare them first.
 #
 
 # .PHONY: all install clean
+.PHONY: clean
 
 ########################################################################
 # Subdirectories.
@@ -34,47 +32,6 @@ eprintln($(CWD)/OMakefile is not configured)
 #
 
 # .SUBDIRS:
-
-########################################################################
-# C configuration.
-# Delete this section if you are not building C files.
-#
-
-################################################
-# Configuration.  You might want to modify any of these
-# configuration variables.
-#
-
-# CFLAGS +=
-# ASFLAGS +=
-# LDFLAGS +=
-# INCLUDES +=
-
-################################################
-# Uncomment the following section if you want
-# to build a C program in the current directory.
-#
-
-# CFILES[] =
-#    file1
-#    main
-#
-# MAIN = main
-#
-# .DEFAULT: $(CProgram $(MAIN), $(CFILES))
-
-################################################
-# Uncomment the following section if you want to build a C library
-# in the current directory.
-#
-
-# LIBFILES[] =
-#    file1
-#    file2
-#
-# LIB = libxxx
-#
-# .DEFAULT: $(StaticCLibrary $(LIB), $(LIBFILES))
 
 ########################################################################
 # OCaml configuration.
@@ -109,9 +66,11 @@ eprintln($(CWD)/OMakefile is not configured)
 # Compile native or byte code?
 #
 # The default values are defined as follows:
-#
+
 # NATIVE_ENABLED = $(OCAMLOPT_EXISTS)
 # BYTE_ENABLED = $(not $(OCAMLOPT_EXISTS))
+BYTE_ENABLED = true
+MENHIR_ENABLED = true
 
 #
 # Various options
@@ -122,26 +81,34 @@ eprintln($(CWD)/OMakefile is not configured)
 # OCAML_LINK_FLAGS +=
 # OCAML_BYTE_LINK_FLAGS +=
 # OCAML_NATIVE_LINK_FLAGS +=
+MENHIR_FLAGS += --explain --infer -v
 
 ################################################
 # Generated files
 #
 # Workaround for the fact that ocamldep does not pay attention to .mll
 # and .mly files.
-#
-# OCamlGeneratedFiles(parser.ml lexer.ml)
+
+OCamlGeneratedFiles(parser.ml lexer.ml)
 
 ################################################
 # Build an OCaml library
 #
 
-# FILES[] =
-#    file1
-#    file2
-#
-# LIB = main
-#
-# .DEFAULT: $(OCamlLibrary $(LIB), $(FILES))
+FILES[] =
+   syntax
+   lexer
+   parser
+   environment
+   typing
+   translate
+   eval
+   util
+   pp
+
+LIB = lib			# without suffix
+
+.DEFAULT: $(OCamlLibrary $(LIB), $(FILES))
 
 ################################################
 # Build an OCaml program
@@ -150,11 +117,26 @@ eprintln($(CWD)/OMakefile is not configured)
 # FILES[] =
 #    file1
 #    file2
-#
-# PROGRAM =
+
+PROGRAM = gtlc
 # OCAML_LIBS +=
 # OCAML_CLIBS +=
 # OCAML_OTHER_LIBS +=
 # OCAML_LIB_FLAGS +=
-#
+
 # .DEFAULT: $(OCamlProgram $(PROGRAM), $(FILES))
+
+# NOTE: Assume BYTE_ENABLED
+$(PROGRAM): lib.cma main.ml
+	$(OCAMLC) -o $@ $^
+
+# Overwrite DEFAULT ; To be fixed.
+.DEFAULT: $(PROGRAM)
+
+clean:
+#	rm -f $(filter-proper-targets $(glob $(addsuffix .*, $(FILES))))
+	rm -f $(PROGRAM)
+	rm -f $(LIB).cma
+	rm -f *.cm[iox] *.o
+	rm -f parser.ml parser.mli lexer.ml
+	rm -f parser.output parser.automaton parser.conflicts
