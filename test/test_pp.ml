@@ -1,6 +1,5 @@
 open OUnit2
 open Format
-open Pp
 
 (* test parser and G.string_of_exp *)
 (* because I don't have parser for C.exp now *)
@@ -13,7 +12,7 @@ let test_string_of_exp =
               (* it is also possible to parse again the final string?? *)
               let lexbuf = Lexing.from_string (input ^ ";;") in
               let p = Parser.toplevel Lexer.main lexbuf in
-              let s = asprintf "%a" G.pp_prog p in
+              let s = asprintf "%a" Pp.G.pp_prog p in
               assert_equal input s
   in
   List.map test [

@@ -1,7 +1,7 @@
+open Format
 open OUnit2
 open Syntax
 open Typing.G
-open Stringify
 
 (* TODO: Add tests for evaluation *)
 
@@ -11,10 +11,11 @@ let test_ty_exp =
     (* use input string as test name *)
     (* >:: gives a name for a test *)
     input >:: fun test_ctxt ->
-              let p = Parser.toplevel Lexer.main (Lexing.from_string (input ^ ";;")) in
+              let lexbuf = Lexing.from_string (input ^ ";;") in
+              let p = Parser.toplevel Lexer.main lexbuf in
               (match p with
                | Exp e -> let t = ty_exp gamma e in
-                          assert_equal (string_of_ty t) expected
+                          assert_equal (asprintf "%a" Pp.pp_ty t) expected
                | _ -> assert false)
   in
   List.map test [
