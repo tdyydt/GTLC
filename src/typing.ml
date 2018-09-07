@@ -7,17 +7,23 @@ type tyenv = ty Environment.t
 
 let rec are_consistent (t1 : ty) (t2 : ty) : bool =
   match (t1,t2) with
-  | (TyDyn, _) -> true
-  | (_, TyDyn) -> true
-  | (TyInt, TyInt) -> true
-  | (TyBool, TyBool) -> true
-  | (TyFun (t11,t12), TyFun (t21,t22)) ->
+  | TyDyn, _ -> true
+  | _, TyDyn -> true
+  | TyInt, TyInt -> true
+  | TyBool, TyBool -> true
+  | TyFun (t11,t12), TyFun (t21,t22) ->
      are_consistent t11 t21 && are_consistent t12 t22
+  | TyList t11, TyList t21 -> are_consistent t11 t21
   | (_, _) -> false
 
 let matching_fun : ty -> (ty * ty) option = function
   | TyFun (t1, t2) -> Some (t1, t2)
-  | TyDyn -> Some (TyDyn, TyDyn)
+  | TyDyn -> Some (TyDyn, TyDyn) (* ?->? *)
+  | _ -> None
+
+let matching_list : ty -> ty option = function
+  | TyList t -> Some t
+  | TyDyn -> Some TyDyn         (* ? list *)
   | _ -> None
 
 (* meet wrt. precision relation: [T < ?] *)
@@ -31,6 +37,11 @@ let rec meet (t1 : ty) (t2 : ty) : ty option = match (t1, t2) with
      begin match meet t11 t21, meet t12 t22 with
      | Some t1', Some t2' -> Some (TyFun (t1', t2'))
      | _ -> None
+     end
+  | TyList t11, TyList t21 ->
+     begin match meet t11 t21 with
+     | Some u -> Some (TyList u)
+     | None -> None
      end
   | _ -> None
 
@@ -129,12 +140,49 @@ module G = struct
                                        Pp.pp_ty t2 Pp.pp_ty t11))
        | None -> raise (Type_error
                           (range_of_exp e1,
-                           Format.asprintf "App: %a doesn't match with a function type"
+                           Format.asprintf "App: %a doesn't match a function type"
                              Pp.pp_ty t1))
        end
     | LetRecExp (r, bindings, e2) ->
        let gamma1, _ = ty_rec_bindings gamma bindings in
        let t2 = ty_exp gamma1 e2 in check_tyopt r t2 tyopt
+
+    | NilLit (r, t) -> check_tyopt r t tyopt
+    | ConsExp (r, e1, e2) ->
+       let t1 = ty_exp gamma e1 in
+       let t2 = ty_exp gamma e2 in
+       begin match matching_list t2 with
+       | Some t21 ->
+          (* t1 & t21 list *)
+          begin match meet t1 t21 with
+          | Some u -> check_tyopt r (TyList u) tyopt
+          | None -> raise (Type_error
+                             (r, Format.asprintf "Cons: Meet is undefined on %a and %a"
+                                   Pp.pp_ty t1 Pp.pp_ty t21))
+          end
+       | None -> raise (Type_error
+                          (range_of_exp e2,
+                           Format.asprintf "Cons: %a doesn't match a list type"
+                             Pp.pp_ty t2))
+       end
+    | MatchExp (r, e1, e2, x, y, e3) ->
+       let t1 = ty_exp gamma e1 in
+       begin match matching_list t1 with
+       | Some t11 ->            (* e1 : t11 list *)
+          let t2 = ty_exp gamma e2 in
+          let t3 = ty_exp (Environment.add x t11
+                             (Environment.add y (TyList t11) gamma)) e3 in
+          begin match meet t2 t3 with
+          | Some u -> check_tyopt r u tyopt
+          | None -> raise (Type_error
+                             (r, Format.asprintf "Match (branches): Meet is undefined on %a and %a"
+                                   Pp.pp_ty t2 Pp.pp_ty t3))
+          end
+       | None -> raise (Type_error
+                          (range_of_exp e1,
+                           Format.asprintf "Match: %a doesn't match a list type"
+                             Pp.pp_ty t1))
+       end
 
   (* auxiliary function for typing LetRec bindings *)
   and ty_rec_bindings : tyenv -> rec_bindings -> tyenv * (id * ty) list =

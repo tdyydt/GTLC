@@ -64,7 +64,8 @@ module G = struct
   let range_of_exp = function
     | Var (r,_) | ILit (r,_) | BLit (r,_)
       | BinOp (r,_,_,_) | IfExp (r,_,_,_) | LetExp (r,_,_)
-      | FunExp (r,_,_,_) | AppExp (r,_,_) | LetRecExp (r,_,_) -> r
+      | FunExp (r,_,_,_) | AppExp (r,_,_) | LetRecExp (r,_,_)
+      | NilLit (r,_) | ConsExp (r,_,_) | MatchExp (r,_,_,_,_,_) -> r
 
 end
 
@@ -98,6 +99,7 @@ module C = struct
     | Var (r,_) | ILit (r,_) | BLit (r,_)
       | BinOp (r,_,_,_) | IfExp (r,_,_,_) | LetExp (r,_,_)
       | FunExp (r,_,_,_) | AppExp (r,_,_) | LetRecExp (r,_,_)
+      | NilLit (r,_) | ConsExp (r,_,_) | MatchExp (r,_,_,_,_,_)
       | CastExp (r,_,_,_) -> r
 
 end
