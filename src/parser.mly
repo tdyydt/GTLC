@@ -19,13 +19,17 @@ open Util.Error
 
 (* precedence: lower to higher *)
 (* via: https://caml.inria.fr/pub/docs/manual-ocaml/expr.html *)
-%right prec_let prec_fun
+%right prec_let prec_fun prec_match
 %right prec_if
 %right LOR
 %right LAND
 %left LT GT EQ LE GE
+%right CONS
 %left PLUS MINUS
 %left MULT DIV
+
+%right RARROW                   (* function ty *)
+%nonassoc LIST
 
 %start toplevel
 %type <Syntax.G.program> toplevel
@@ -103,6 +107,21 @@ expr :
     IN e2=expr %prec prec_let
     { let r = join_range r0 (range_of_exp e2) in
       LetRecExp (r, rec_bindings, e2) }
+
+  | e1=expr CONS e2=expr
+    { let r = join_range (range_of_exp e1) (range_of_exp e2) in
+      ConsExp (r, e1, e2) }
+  | r0=MATCH e1=expr WITH
+    ioption(VBAR) LBRA RBRA RARROW e2=expr
+    VBAR idx=ID CONS idy=ID RARROW e3=expr %prec prec_match
+    { if idx.value = idy.value then
+        raise (Syntax_error
+                 (join_range idx.range idy.range,
+                  Format.sprintf "Variable %s is bound twice in the matching." idx.value))
+      else
+        let r = join_range r0 (range_of_exp e3) in
+        MatchExp (r, e1, e2, idx.value, idy.value, e3) }
+
   | e=minus_expr { e }
 
 (* %inline is necessary; see Sec 5.3 of manual *)
@@ -143,12 +162,14 @@ simple_expr :             (* 括弧をつけなくても関数の引数になれ
   | r=TRUE { BLit (r, true) }
   | r=FALSE { BLit (r, false) }
   | id=ID { Var (id.range, id.value) }
-
+  (* [@T] *)
+  | r1=LBRA AT t=ty r2=RBRA { NilLit (join_range r1 r2, t) }
 
 (* Types: for type annotation *)
 ty :
   | t=simple_ty { t }
-  | t1=simple_ty RARROW t2=ty { TyFun (t1, t2) }
+  | t1=ty RARROW t2=ty { TyFun (t1, t2) }
+  | t=ty LIST { TyList t }
 
 simple_ty :
   | LPAREN t=ty RPAREN { t }

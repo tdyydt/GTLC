@@ -9,6 +9,7 @@ type ty =
   | TyInt
   | TyBool
   | TyFun of ty * ty
+  | TyList of ty
   | TyDyn                       (* the dynamic/unknown type *)
 
 type binOp = Plus | Minus | Mult | Div | Lt | Gt | Eq | LE | GE | LAnd | LOr
