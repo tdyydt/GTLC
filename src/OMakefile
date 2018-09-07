@@ -127,7 +127,7 @@ PROGRAM = gtlc
 # .DEFAULT: $(OCamlProgram $(PROGRAM), $(FILES))
 
 # NOTE: Assume BYTE_ENABLED
-$(PROGRAM): lib.cma main.ml
+$(PROGRAM): $(LIB).cma main.ml
 	$(OCAMLC) -o $@ $^
 
 # Overwrite DEFAULT ; To be fixed.
