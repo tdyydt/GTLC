@@ -147,7 +147,7 @@ module G = struct
        let gamma1, _ = ty_rec_bindings gamma bindings in
        let t2 = ty_exp gamma1 e2 in check_tyopt r t2 tyopt
 
-    | NilLit (r, t) -> check_tyopt r t tyopt
+    | NilLit (r, t) -> check_tyopt r (TyList t) tyopt
     | ConsExp (r, e1, e2) ->
        let t1 = ty_exp gamma e1 in
        let t2 = ty_exp gamma e2 in
