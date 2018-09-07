@@ -10,9 +10,12 @@ type tag =
   | IntT                        (* int *)
   | BoolT                       (* bool *)
   | FunT                        (* Function (Arrow) [?->?] *)
+  | ListT                       (* [? list] *)
 
+(* positive and negative *)
 type polarity = Pos | Neg
-let compl = function Pos -> Neg | Neg -> Pos (* complement *)
+(* complement or negation *)
+let compl = function Pos -> Neg | Neg -> Pos
 
 (* Blame(tag1, tag2):
  * The value has been tagged as tag1, but is being untagged as tag2 *)
@@ -26,12 +29,14 @@ type value =
    * and environment, which contains values of free variables *)
   | FunV of id * exp * (env ref)
   (* Wrapped function:
-   * Wrapped (v,t1,t2,t3,t4,r) ==> [v: (t1 -> t2) => (t3 -> t4)]
-   * Besides, r is blame label *)
+   * Wrapped (v,t1,t2,t3,t4,r,p) ==> [v: (t1 -> t2) => (t3 -> t4)]
+   * Besides, r is blame label, and p is its polarity *)
   | Wrapped of value * ty * ty * ty * ty * range * polarity
-  (* Tagged value, aka Injection:
+  (* Tagged value (aka. injection):
    * Tagged (G, v) ==> [v: G => ?] *)
   | Tagged of tag * value
+  | NilV
+  | ConsV of value * value
 and env = value Environment.t
 
 (* evaluate binary operation *)
@@ -88,6 +93,22 @@ let rec eval_exp : env -> exp -> value = fun env ->
      let new_env, _ = eval_rec_bindings env bindings in
      eval_exp new_env f2
 
+  | NilLit _ -> NilV
+  | ConsExp (_, f1, f2) ->
+     let v1 = eval_exp env f1 in
+     let v2 = eval_exp env f2 in
+     begin match v2 with
+     | NilV | ConsV _ -> ConsV (v1, v2)
+     | _ -> raise (Eval_bug "Cons: rhs must be list")
+     end
+  | MatchExp (_, f1, f2, x, y, f3) ->
+     begin match eval_exp env f1 with
+     | NilV -> eval_exp env f2
+     | ConsV (hd, tl) -> eval_exp (Environment.add x hd
+                                     (Environment.add y tl env)) f3
+     | _ -> raise (Eval_bug "Match: Not a list.")
+     end
+
   | CastExp (r, f, t1, t2) ->
      let v = eval_exp env f in eval_cast v t1 t2 r Pos
 
@@ -134,16 +155,22 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) (r : range) (p : polarity) : value
   | TyBool, TyBool -> v
   (* IdStar *)
   | TyDyn, TyDyn -> v
-  (* Cast to DYN *)
+  (* Cast to DYN ; already value *)
   | TyInt, TyDyn -> Tagged (IntT, v)
   | TyBool, TyDyn -> Tagged (BoolT, v)
+  | TyFun (TyDyn, TyDyn), TyDyn -> Tagged (FunT, v)
+  | TyList TyDyn, TyDyn -> Tagged (ListT, v)
   (* Ground; decompose cast *)
-  | TyFun (t11, t12), TyDyn ->
+  | TyFun (t11, t12), TyDyn ->  (* Not t11=t12=TyDyn *)
      (* [(v: (t11 -> t12) => (? -> ?)): (? -> ?) => ?] *)
      let v' = Wrapped (v, t11, t12, TyDyn, TyDyn, r, p)
      in Tagged (FunT, v')
+  | TyList t11, TyDyn ->        (* Not t11=TyDyn *)
+     (* [(v: t11 list => ? list) : ? list => ?)] *)
+     let v' = eval_cast v (TyList t11) (TyList TyDyn) r p
+     in Tagged (ListT, v')
 
-  (* either Succeed (Collapse), or Fail (Conflict) *)
+  (* either Succeed (Collapse) or Fail (Conflict) *)
   | TyDyn, TyInt ->
      begin match v with
      (* [v': int => ? => int] --> v' *)
@@ -164,16 +191,43 @@ and eval_cast (v : value) (t1 : ty) (t2 : ty) (r : range) (p : polarity) : value
      (* In [v: ? => (? -> ?)], v must be Tagged (F, v') *)
      | _ -> raise (Eval_bug "eval_cast: Untagged value")
      end
+  | TyDyn, TyList TyDyn ->
+     begin match v with
+     | Tagged (ListT, v') -> v'
+     | Tagged (tag, _) -> raise (Blame (r, p, tag, ListT))
+     | _ -> raise (Eval_bug "eval_cast: Untagged value")
+     end
 
   (* Expand *)
-  | TyDyn, TyFun (t21, t22) ->  (* Not both t21 and t22 is TyDyn *)
+  | TyDyn, TyFun (t21, t22) ->  (* Not t21=t22=TyDyn *)
      (* [v: ? => (t21 -> t22)] -->
       * [(v: ? => (? -> ?)): (? -> ?) => (t21 -> t22)] *)
      let v' = eval_cast v TyDyn (TyFun (TyDyn, TyDyn)) r p
      in Wrapped (v', TyDyn, TyDyn, t21, t22, r, p)
+  | TyDyn, TyList t21 ->        (* Not t21=TyDyn *)
+     (* [(v: ? => ? list): ? list => t21 list] *)
+     let v' = eval_cast v TyDyn (TyList TyDyn) r p in
+     eval_cast v' (TyList TyDyn) (TyList t21) r p
+
+  (* function *)
+  | TyFun (t11, t12), TyFun (t21, t22) ->
+     if t11 = t21 && t12 = t22 then v (* Id *)
+     else Wrapped (v, t11, t12, t21, t22, r, p)
+
+  (* list *)
+  | TyList t11, TyList t21 ->
+     begin match v with
+     | NilV -> NilV
+     | ConsV (v1, v2) ->
+        if t11 = t21 then v (* Id *)
+        else let v1' = eval_cast v1 t11 t21 r p in
+             let v2' = eval_cast v2 (TyList t11) (TyList t21) r p in
+             ConsV (v1', v2')
+     | _ -> raise (Eval_bug "eval_cast: Not a list")
+     end
 
   (* The remaining cases should have been rejected as static type error *)
-  | _, _ -> raise (Eval_bug "eval_cast: unexpected case")
+  | _, _ -> raise (Eval_bug "eval_cast: Unexpected case")
 
 
 let eval_prog : env -> program -> env * (id * value) list = fun env ->
