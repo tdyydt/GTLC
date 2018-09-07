@@ -10,8 +10,9 @@ open Util.Error
 %token <Util.Error.range> IF THEN ELSE TRUE FALSE
 %token <Util.Error.range> LET IN EQ REC AND
 %token <Util.Error.range> RARROW FUN
+%token <Util.Error.range> CONS LBRA RBRA AT MATCH WITH VBAR
 %token <Util.Error.range> INT BOOL QU              (* Types *)
-%token <Util.Error.range> COLON
+%token <Util.Error.range> COLON LIST
 
 %token <int Util.Error.with_range> INTV
 %token <Syntax.id Util.Error.with_range> ID

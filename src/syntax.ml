@@ -27,7 +27,7 @@ let string_of_binop = function
   | LAnd  -> "&&"
   | LOr   -> "||"
 
-(* Gradually typed surface language *)
+(* Gradually Typed Lambda Calculus (surface language) *)
 module G = struct
   type exp =
     | Var of range * id
@@ -37,13 +37,18 @@ module G = struct
     | IfExp of range * exp * exp * exp
     | LetExp of range * bindings * exp
     (* Type annotation is mandatory at this moment. *)
-    (* FunExp (x,t,e) ==> [fun (x:t) -> e] *)
+    (* FunExp (_,x,t,e) ==> [fun (x:t) -> e] *)
     | FunExp of range * id * ty * exp
     | AppExp of range * exp * exp
-    (* LetRec ([(f,x,t1,t2,e1)],e2) ==>
+    (* LetRec (_,[(f,x,t1,t2,e1)],e2) ==>
      * [let rec f (x:t1) : t2 = e1 in e2]
      * where t2 is return type annotation *)
     | LetRecExp of range * rec_bindings * exp
+    | NilLit of range * ty
+    | ConsExp of range * exp * exp
+    (* MatchExp (_, e1, e2, x, y, e3) ==>
+     * match e1 with [] -> e2 | x :: y -> e3 *)
+    | MatchExp of range * exp * exp * id * id * exp
 
   and bindings = (id * exp) list
   and rec_bindings = (id * id * ty * ty * exp) list
@@ -62,7 +67,7 @@ module G = struct
 
 end
 
-(* Cast Calculus *)
+(* Cast Calculus (intermediate language) *)
 module C = struct
   type exp =
     | Var of range * id
@@ -74,6 +79,9 @@ module C = struct
     | FunExp of range * id * ty * exp
     | AppExp of range * exp * exp
     | LetRecExp of range * rec_bindings * exp
+    | NilLit of range * ty
+    | ConsExp of range * exp * exp
+    | MatchExp of range * exp * exp * id * id * exp
     (* CastExp(f,t1,t2) ==> [f: t1 => t2]  *)
     | CastExp of range * exp * ty * ty
 

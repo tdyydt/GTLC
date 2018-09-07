@@ -14,10 +14,11 @@ let reservedWords = [
   ("in", fun r -> P.IN r);
   ("rec", fun r -> P.REC r);
   ("and", fun r -> P.AND r);
-  (* ("match", P.MATCH);           (\* match *\)
-   * ("with", P.WITH); *)
+  ("match", fun r -> P.MATCH r); (* match *)
+  ("with", fun r -> P.WITH r);
   ("int", fun r -> P.INT r);    (* Types *)
   ("bool", fun r -> P.BOOL r);
+  ("list", fun r -> P.LIST r )
 ]
 
 (* range_of_lexbuf *)
@@ -27,8 +28,8 @@ let range_of lexbuf = {
   }
 }
 
-(* '\012' は10進で，Form Feed (\f) を表す *)
-(* '\r' も追加？ *)
+(* '\012' (decimal) is Form Feed (\f) *)
+(* Add '\r' ?? *)
 let space = [' ' '\t' '\012' '\n']
 
 rule main = parse
@@ -54,8 +55,14 @@ rule main = parse
 | ">=" { P.GE (range_of lexbuf) }
 | "=" { P.EQ (range_of lexbuf) } (* let, relational *)
 | "->" { P.RARROW (range_of lexbuf) }
-| "?" { P.QU (range_of lexbuf) } (* the unknown type *)
+| "?" { P.QU (range_of lexbuf) }    (* the unknown type *)
 | ":" { P.COLON (range_of lexbuf) } (* type annot *)
+| "[" { P.LBRA (range_of lexbuf) }  (* Lists *)
+| "]" { P.RBRA (range_of lexbuf) }
+| "::" { P.CONS (range_of lexbuf) }
+(* | ";" { Parser.SEMI (range_of lexbuf) } *)
+| "@" { P.AT (range_of lexbuf) }
+| "|" { P.VBAR (range_of lexbuf) } (* match *)
 
 | ['a'-'z'] ['a'-'z' '0'-'9' '_' '\'']*
     { let id = Lexing.lexeme lexbuf in
