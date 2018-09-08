@@ -47,22 +47,12 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
      if are_consistent t1 TyBool then
        let f2, t2 = translate_exp gamma e2 in
        let f3, t3 = translate_exp gamma e3 in
-       begin match tyopt with
-       | Some t ->
-          if are_consistent t2 t then
-            if are_consistent t3 t then
-              (C.IfExp (r, cast_opt f1 t1 TyBool,
-                        cast_opt f2 t2 t,
-                        cast_opt f3 t3 t), t)
-            else raise (CI_bug "If (else)")
-          else raise (CI_bug "If (then)")
-       | None ->
-          begin match meet t2 t3 with
-          | Some u -> (C.IfExp (r, cast_opt f1 t1 TyBool,
-                                cast_opt f2 t2 u,
-                                cast_opt f3 t3 u), u)
-          | None -> raise (CI_bug "If (branches): Meet undef.")
-          end
+       begin match meet t2 t3 with
+       | Some u -> let f = C.IfExp (r, cast_opt f1 t1 TyBool,
+                                    cast_opt f2 t2 u,
+                                    cast_opt f3 t3 u) in
+                   translate_tyopt f u tyopt
+       | None -> raise (CI_bug "If (branches): Meet undef.")
        end
      else raise (CI_bug "If (test)")
   | G.LetExp (r, bindings, e2) ->

@@ -97,26 +97,13 @@ module G = struct
        if are_consistent t1 TyBool then
          let t2 = ty_exp gamma e2 in
          let t3 = ty_exp gamma e3 in
-         begin match tyopt with
-         | Some t ->           (* t is geven annotatation & respected *)
-            if are_consistent t2 t then
-              if are_consistent t3 t then t
-              else raise (Type_error
-                            (range_of_exp e3,
-                             Format.asprintf "If (else): %a is not consistent with %a"
-                               Pp.pp_ty t3 Pp.pp_ty t))
-            else raise (Type_error
-                          (range_of_exp e2,
-                           Format.asprintf "If (then): %a is not consistent with %a"
-                             Pp.pp_ty t2 Pp.pp_ty t))
-         | None ->
-            begin match meet t2 t3 with
-            | Some u -> u
-            | None -> raise (Type_error
-                               (r, Format.asprintf
-                                     "If (branches): Meet is undefined on %a and %a"
-                                     Pp.pp_ty t2 Pp.pp_ty t3))
-            end
+         (* meet first; and check tyopt later *)
+         begin match meet t2 t3 with
+         | Some u -> check_tyopt r u tyopt
+         | None -> raise (Type_error
+                            (r, Format.asprintf
+                                  "If (branches): Meet is undefined on %a and %a"
+                                  Pp.pp_ty t2 Pp.pp_ty t3))
          end
        else raise (Type_error
                      (range_of_exp e1,
