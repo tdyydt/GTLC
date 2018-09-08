@@ -28,7 +28,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
        let t = Environment.find x gamma in
        translate_tyopt (C.Var (r,x)) t tyopt
      with
-     | Not_found -> raise (CI_bug ("Var: Nnot bound: " ^ x))
+     | Not_found -> raise (CI_bug ("Var: Not bound: " ^ x))
     end
   | G.ILit (r,n) -> translate_tyopt (C.ILit (r,n)) TyInt tyopt
   | G.BLit (r,b) -> translate_tyopt (C.BLit (r,b)) TyBool tyopt
@@ -61,7 +61,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
           | Some u -> (C.IfExp (r, cast_opt f1 t1 TyBool,
                                 cast_opt f2 t2 u,
                                 cast_opt f3 t3 u), u)
-          | None -> raise (CI_bug "If (branches): meet")
+          | None -> raise (CI_bug "If (branches): Meet undef.")
           end
        end
      else raise (CI_bug "If (test)")
@@ -84,7 +84,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
                                cast_opt f2 t2 t11) in
              translate_tyopt f t12 tyopt
         else raise (CI_bug "App")
-     | None -> raise (CI_bug "App: matching")
+     | None -> raise (CI_bug "App: matching_fun")
      end
 
   | G.LetRecExp (r, bindings, e2) ->
@@ -92,6 +92,37 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
        translate_rec_bindings gamma bindings in
      let f2, t2 = translate_exp gamma1 e2 in
      translate_tyopt (C.LetRecExp (r, new_bindings, f2)) t2 tyopt
+
+  | G.NilLit (r,t) -> translate_tyopt (C.NilLit (r,t)) (TyList t) tyopt
+  | G.ConsExp (r, e1, e2) ->
+     let f1, t1 = translate_exp gamma e1 in
+     let f2, t2 = translate_exp gamma e2 in
+     begin match matching_list t2 with
+     | Some t21 ->
+        begin match meet t1 t21 with
+        | Some u -> let f = C.ConsExp (r, cast_opt f1 t1 u,
+                                       cast_opt f2 t2 (TyList u)) in
+                    translate_tyopt f (TyList u) tyopt
+        | None -> raise (CI_bug "Cons: Meet undef.")
+        end
+     | None -> raise (CI_bug "Cons: matching_list")
+     end
+  | G.MatchExp (r, e1, e2, x, y, e3) ->
+     let f1, t1 = translate_exp gamma e1 in
+     begin match matching_list t1 with
+     | Some t11 ->              (* e1 : t11 list *)
+        let f2, t2 = translate_exp gamma e2 in
+        let f3, t3 = translate_exp (Environment.add x t11
+                                      (Environment.add y (TyList t11) gamma)) e3 in
+        begin match meet t2 t3 with
+        | Some u -> let f = C.MatchExp (r, cast_opt f1 t1 (TyList t11),
+                                        cast_opt f2 t2 u,
+                                        x, y, cast_opt f3 t3 u) in
+                    translate_tyopt f u tyopt
+        | None -> raise (CI_bug "Match: Meet undef.")
+        end
+     | None -> raise (CI_bug "Match: matching_list")
+     end
 
 (* auxiliary function to translate LetRec bindings *)
 and translate_rec_bindings : tyenv -> G.rec_bindings -> C.rec_bindings * tyenv * (id * ty) list =
