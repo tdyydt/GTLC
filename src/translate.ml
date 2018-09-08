@@ -102,7 +102,7 @@ let rec translate_exp (gamma : tyenv) ?(tyopt : ty option = None) (e : G.exp) : 
         begin match meet t1 t21 with
         | Some u -> let f = C.ConsExp (r, cast_opt f1 t1 u,
                                        cast_opt f2 t2 (TyList u)) in
-                    translate_tyopt f u tyopt
+                    translate_tyopt f (TyList u) tyopt
         | None -> raise (CI_bug "Cons: Meet undef.")
         end
      | None -> raise (CI_bug "Cons: matching_list")
