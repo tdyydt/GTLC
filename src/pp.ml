@@ -32,13 +32,9 @@ let rec pp_ty ppf t =
   | TyList t1 ->                (* e.g. int list list *)
      fprintf ppf "%a list" pp_ty_paren2 t1
 
+(* Not using? *)
 let pp_binop ppf op =
   pp_print_string ppf (string_of_binop op)
-
-(* true if op is right assoc, false if left assoc *)
-let right_assoc : binOp -> bool = function
-  | LAnd | LOr -> true
-  | _ -> false
 
 module C = struct
   open Syntax.C
@@ -73,16 +69,18 @@ module C = struct
     | ILit (_,n) -> fprintf ppf "%d" n
     | BLit (_,b) -> pp_print_bool ppf b
     | BinOp (_, op, f1, f2) ->
-       if right_assoc op then   (* Right assoc *)
-         fprintf ppf "%a %a %a"
-           pp_exp_paren1 f1
-           pp_binop op
-           pp_exp_paren2 f2
-       else                     (* Left assoc *)
-         fprintf ppf "%a %a %a"
-           pp_exp_paren2 f1
-           pp_binop op
-           pp_exp_paren1 f2
+       begin match op with
+       | LAnd | LOr ->          (* Right assoc *)
+          fprintf ppf "%a %a %a"
+            pp_exp_paren1 f1
+            pp_binop op
+            pp_exp_paren2 f2
+       | _ ->                   (* Left assoc *)
+          fprintf ppf "%a %a %a"
+            pp_exp_paren2 f1
+            pp_binop op
+            pp_exp_paren1 f2
+       end
     | IfExp (_, f1, f2, f3) ->
        fprintf ppf "if %a then %a else %a"
          pp_exp_paren1 f1
@@ -97,7 +95,7 @@ module C = struct
     | FunExp (_, x, t, f1) ->
        fprintf ppf "fun (%s : %a) -> %a"
          x pp_ty t pp_exp f1
-    | AppExp (_, f1, ILit n) when n < 0 ->
+    | AppExp (_, f1, ILit (_, n)) when n < 0 ->
        fprintf ppf "%a (%d)" pp_exp_paren2 f1 n
     | AppExp (_, f1, f2) ->     (* Left assoc *)
        fprintf ppf "%a %a"
@@ -107,7 +105,7 @@ module C = struct
        fprintf ppf "%a : %a => %a"
          pp_exp_paren1 f1 pp_ty t1 pp_ty t2
 
-    | NilLit (_, t) ->          (* use %@ to output @ *)
+    | NilLit (_, t) ->          (* Use %@ to output @ *)
        fprintf ppf "[%@%a]" pp_ty t
     | ConsExp (_, f1, f2) ->    (* Right assoc*)
        fprintf ppf "%a :: %a"
@@ -146,7 +144,7 @@ module G = struct
   open Syntax.G
   (* precedence of expression *)
   let prec_exp = function
-    | LetExp _ | LetRecExp _ | FunExp _ -> 10
+    | LetExp _ | LetRecExp _ | FunExp _ | MatchExp _ -> 10
     | IfExp _ -> 20
     | BinOp (_, LOr, _, _) -> 31
     | BinOp (_, LAnd, _, _) -> 32
@@ -155,7 +153,7 @@ module G = struct
     | BinOp (_, (Plus | Minus), _, _) -> 35
     | BinOp (_, (Mult | Div), _, _) -> 36
     | AppExp _ -> 40
-    | Var _ | ILit _ | BLit _ -> 50
+    | Var _ | ILit _ | BLit _ | NilLit _ -> 50
 
   (* e1 > e2 : e1 associates stronger than e2 *)
   let gt_exp e1 e2 = (prec_exp e1) > (prec_exp e2)
@@ -170,10 +168,18 @@ module G = struct
     | ILit (_,n) -> fprintf ppf "%d" n
     | BLit (_,b) -> pp_print_bool ppf b
     | BinOp (_, op, e1, e2) ->
-       fprintf ppf "%a %a %a"
-         pp_exp_paren2 e1
-         pp_binop op
-         pp_exp_paren1 e2
+       begin match op with
+       | LAnd | LOr ->          (* Right assoc *)
+          fprintf ppf "%a %a %a"
+            pp_exp_paren1 e1
+            pp_binop op
+            pp_exp_paren2 e2
+       | _ ->                   (* Left assoc *)
+          fprintf ppf "%a %a %a"
+            pp_exp_paren2 e1
+            pp_binop op
+            pp_exp_paren1 e2
+       end
     | IfExp (_, e1, e2, e3) ->
        fprintf ppf "if %a then %a else %a"
          pp_exp_paren1 e1
@@ -188,10 +194,20 @@ module G = struct
     | FunExp (_, x, t, e1) ->
        fprintf ppf "fun (%s : %a) -> %a"
          x pp_ty t pp_exp e1
+    | AppExp (_, e1, ILit (_, n)) when n < 0 ->
+       fprintf ppf "%a (%d)" pp_exp_paren2 e1 n
     | AppExp (_, e1, e2) ->
        fprintf ppf "%a %a"
          pp_exp_paren2 e1
          pp_exp_paren1 e2
+
+    | NilLit (_, t) -> fprintf ppf "[%@%a]" pp_ty t
+    | ConsExp (_, e1, e2) ->
+       fprintf ppf "%a :: %a" pp_exp_paren1 e1 pp_exp_paren2 e2
+    | MatchExp (_, e1, e2, x, y, e3) ->
+       fprintf ppf "match %a with [] -> %a | %s :: %s -> %a"
+         pp_exp_paren1 e1 pp_exp_paren1 e2
+         x y pp_exp_paren1 e3
 
   and pp_bindings ppf bindings =
     (* print bindings ; print _and_ between them *)
@@ -230,10 +246,16 @@ let rec pp_value ppf = function
   | Wrapped (v, t1, t2, t3, t4, _, _) ->
      (* How should wrapped functions be displayed? *)
      (* Wrapped, Tagged can be nested? *)
+     (* Only <wfun> is enough?? *)
      fprintf ppf "%a : %a -> %a => %a -> %a"
        pp_value v pp_ty t1 pp_ty t2 pp_ty t3 pp_ty t4
   | Tagged (tag, v) ->
+     (* v may be Wrapped (FunT); v is not Tagged *)
      fprintf ppf "%a : %s => ?" pp_value v (string_of_tag tag)
   | NilV -> pp_print_string ppf "[]"
-  (* | ConsV (v1, v2) ->           (\* TODO: Use with_paren *\)
-   *    begin match *)
+  | ConsV (v1, v2) ->           (* Use with_paren?? *)
+     (* need paren, if v1 is ConsV *)
+     begin match v1 with
+     | ConsV _ -> fprintf ppf "(%a) :: %a" pp_value v1 pp_value v2
+     | _ -> fprintf ppf "%a :: %a" pp_value v1 pp_value v2
+     end
