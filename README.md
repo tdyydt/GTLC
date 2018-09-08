@@ -54,6 +54,10 @@ omake
 - Recursion: `let rec f (x:T1) : T2 = e1 in e2`
   - The return type annotation `T2` is needed.
   - Mutual recursion: `let rec f1 (x1:T11) : T12 = e1 and f2 (x2:T21) : T22 = e2 in e` is supported.
+- Lists
+  - Nil: `[@T]` (empty list of type `T`)
+  - Cons: `e1 :: e2` (add an element `e1` to a list `e2`)
+- Pattern matching on lists: `match e1 with [] -> e2 | x :: y -> e3`
 
 ### Top-level input
 
