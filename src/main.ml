@@ -27,11 +27,11 @@ let rec read_eval_print gamma env =
     printf "*** Cast Insertion ***\n";
     let open Syntax in
     let ((q : C.program), ty_bindings') = translate_prog gamma p in
-    (* check soundness ; equality of lists *)
-    assert (ty_bindings = ty_bindings');
     (* Show result of translation *)
     let open Pp in
     printf "%a\n" C.pp_prog q;
+    (* check soundness ; equality of lists *)
+    assert (ty_bindings = ty_bindings');
 
     (* Eval *)
     printf "*** Evaluation ***\n";

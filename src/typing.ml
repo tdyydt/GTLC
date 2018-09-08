@@ -18,12 +18,12 @@ let rec are_consistent (t1 : ty) (t2 : ty) : bool =
 
 let matching_fun : ty -> (ty * ty) option = function
   | TyFun (t1, t2) -> Some (t1, t2)
-  | TyDyn -> Some (TyDyn, TyDyn) (* ?->? *)
+  | TyDyn -> Some (TyDyn, TyDyn) (* [?->?] *)
   | _ -> None
 
 let matching_list : ty -> ty option = function
   | TyList t -> Some t
-  | TyDyn -> Some TyDyn         (* ? list *)
+  | TyDyn -> Some TyDyn         (* [? list] *)
   | _ -> None
 
 (* meet wrt. precision relation: [T < ?] *)

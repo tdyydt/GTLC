@@ -25,12 +25,21 @@ let test_pp_exp =
       "1 * 2 + 3";
       "1 < 2 + 3";
       "2 + 3 < 1";
+      "true && true && true";   (* right assoc *)
+      "(true && true) && true";
+      "true && true || true";
+      "true && (true || true)";
+      "1 = 2 || 2 = 3";
 
       "fun (x : ?) -> x";
       "fun (x : int) -> x + 1";
-      "fun (x : ? -> ?) -> x";  (* Test string_of_ty *)
+      (* Tests for pp_ty *)
+      "fun (x : ? -> ?) -> x";
       "fun (x : ? -> ? -> ?) -> x";
       "fun (x : (? -> ?) -> ?) -> x";
+      "fun (x : int list list) -> x";
+      "fun (x : int list -> int list) -> x";
+      "fun (x : (int -> int) list) -> x";
 
       "fun (x : ?) -> fun (y : ?) -> 1";
       "let x = 5 in x";
@@ -51,6 +60,7 @@ let test_pp_exp =
       "f 10 (id 5)";
       "1 + f 5";
       "f 5 + 1";
+      "f (-3)";
     ]
 
 let suite = [
